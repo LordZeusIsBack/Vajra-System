@@ -1,6 +1,33 @@
 [package]
-name = "rust"
+name = "vajra"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
+description = "VAJRA: Zero-Trust Time-Lock CLI for exam distribution"
+
+[[bin]]
+name = "vajra"
+path = "src/main.rs"
 
 [dependencies]
+# CLI argument parsing
+clap = { version = "4", features = ["derive"] }
+
+# Big integer arithmetic (pure Rust, no C deps)
+num-bigint = { version = "0.4", features = ["rand"] }
+num-traits = "0.2"
+
+# Randomness
+rand = "0.8"
+
+# AES-256-GCM authenticated encryption
+aes-gcm = "0.10"
+
+# SHA-256 for key derivation
+sha2 = "0.10"
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Hex encoding for JSON-safe bignum storage
+hex = "0.4"
