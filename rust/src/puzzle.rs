@@ -1,11 +1,19 @@
 /// puzzle.rs — RSW Time-Lock Puzzle core logic
 ///
 /// The security model in one paragraph:
-///   The admin generates N = p*q and picks a random base g.
-///   Using the shortcut e = 2^T_ops mod φ(N), the admin computes K = g^e mod N instantly.
-///   K encrypts the exam. p, q, and φ(N) are then destroyed.
-///   The only way to recover K is to square g sequentially T_ops times — which takes exactly T seconds.
-///   No parallelism helps; this is provably sequential.
+///   The admin generates N = p*q and picks a base g that is a quadratic
+///   residue mod N (g = h^2 mod N for random h). Using the shortcut
+///   e = 2^T_ops mod λ(N), the admin computes K = g^e mod N instantly.
+///   K encrypts the exam. p, q, and λ(N) are then destroyed.
+///   The only way to recover K is to square g sequentially T_ops times —
+///   provably sequential, no parallelism helps.
+///
+/// ⚠ TIMING NOTE
+///   T_ops is calibrated to the ADMIN'S hardware via a benchmark. A faster
+///   center finishes BEFORE T=0; a slower one finishes AFTER. RSW gives
+///   sequentiality, not wall-clock anchoring. For production you need an
+///   external time signal (NTP-rooted release token, drand beacon, VDF tied
+///   to a public chain). This prototype documents the limitation and stops.
 
 use num_bigint::{BigUint, RandBigInt};
 use num_traits::{One, Zero};
@@ -20,7 +28,7 @@ use std::time::Instant;
 pub struct PuzzleParams {
     /// RSA modulus N = p * q, big-endian hex
     pub n: String,
-    /// Squaring base g, big-endian hex
+    /// Squaring base g (a quadratic residue mod N), big-endian hex
     pub g: String,
     /// Exact number of sequential squarings (x = x² mod N) required to recover K
     pub t_ops: u64,
@@ -136,7 +144,9 @@ pub fn benchmark(n: &BigUint, duration_ms: u64) -> u64 {
 pub fn generate(time_seconds: u64) -> (PuzzleParams, AdminSecret) {
     let mut rng = rand::thread_rng();
 
-    // 512 bits each → 1024-bit N. Production should use 1024-bit primes → 2048-bit N.
+    // 512 bits each → 1024-bit N. Production should use ≥1024-bit primes
+    // (2048-bit N). 1024-bit factoring is within reach of nation-state
+    // adversaries — fine for prototype, not for a real exam.
     println!("[1/3] Generating 512-bit prime p ...");
     let p = gen_prime(512, &mut rng);
 
@@ -145,18 +155,29 @@ pub fn generate(time_seconds: u64) -> (PuzzleParams, AdminSecret) {
 
     let n = &p * &q;
 
-    // g must be in (1, N). Use a random value; avoid 1 and N-1 (trivial).
-    let g = rng.gen_biguint_range(&BigUint::from(2u32), &(&n - BigUint::from(2u32)));
+    // Pick g as a quadratic residue: g = h² mod N for random h ∈ [2, N-2].
+    // QRs sit in a subgroup of order λ(N)/2, ruling out elements whose order
+    // happens to divide one of the trivial small factors of (p-1) or (q-1).
+    // (Without this, a random g has overwhelming probability of being fine —
+    // but "overwhelming" isn't "always", and the cost of the square is one
+    // multiplication.)
+    let h = rng.gen_biguint_range(&BigUint::from(2u32), &(&n - BigUint::from(2u32)));
+    let g = (&h * &h) % &n;
 
     println!("[3/3] Benchmarking squarings/sec on this machine (2s sample) ...");
     let sps = benchmark(&n, 2_000);
     println!("      ↳ {sps} squarings/sec");
 
     // T_ops = how many squarings the center must perform to solve the puzzle.
-    // This is calibrated to the admin machine's speed. Centers with different
-    // hardware will solve faster or slower — see README for the implication.
+    // ⚠ Calibrated to admin hardware. Centers with different CPUs finish at
+    // different wall-clock times — see the architecture note at the top of
+    // this file.
     let t_ops = time_seconds.saturating_mul(sps);
-    println!("      ↳ T_ops = {t_ops}  ({time_seconds}s × {sps} sq/s)\n");
+    println!("      ↳ T_ops = {t_ops}  ({time_seconds}s × {sps} sq/s)");
+    println!(
+        "      ⚠  T_ops is calibrated to THIS machine. Centers with faster\n\
+         \x20         hardware will finish before T={time_seconds}s.\n"
+    );
 
     let params = PuzzleParams {
         n: to_hex(&n),
