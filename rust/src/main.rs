@@ -68,6 +68,12 @@ enum Commands {
         /// Output locked file
         #[arg(short, long, default_value = "locked.json", value_name = "FILE")]
         output: PathBuf,
+
+        /// Optional AES-GCM Additional Authenticated Data, hex-encoded.
+        /// VAJRA's Python pipeline supplies the drand-round-binding AAD here.
+        /// Defaults to empty (no AAD) for backwards compatibility.
+        #[arg(long, value_name = "HEX", default_value = "")]
+        aad_hex: String,
     },
 
     /// [CENTER] Step 3: Solve the time-lock and decrypt the exam
@@ -86,6 +92,12 @@ enum Commands {
         /// Where to write the decrypted exam
         #[arg(short, long, default_value = "exam.pdf", value_name = "FILE")]
         output: PathBuf,
+
+        /// AES-GCM Additional Authenticated Data, hex-encoded. Must match the
+        /// AAD supplied at lock time (derived from drand target_round + chain
+        /// hash by the Python pipeline). Empty string = no AAD.
+        #[arg(long, value_name = "HEX", default_value = "")]
+        aad_hex: String,
     },
 
     /// [UTILITY] Benchmark this machine's modular squaring speed
@@ -140,10 +152,18 @@ fn cmd_generate(time: u64, puzzle_out: PathBuf, secret_out: PathBuf) {
     println!("└─────────────────────────────────────────────────────┘");
 }
 
-fn cmd_lock(puzzle: PathBuf, secret: PathBuf, input: PathBuf, output: PathBuf) {
+fn cmd_lock(puzzle: PathBuf, secret: PathBuf, input: PathBuf, output: PathBuf, aad_hex: String) {
     println!("╔══════════════════════════════════════════╗");
     println!("║       VAJRA — Lock Exam (Admin)          ║");
     println!("╚══════════════════════════════════════════╝\n");
+
+    // Decode AAD up front so a bad hex string fails before we touch crypto
+    let aad: Vec<u8> = if aad_hex.is_empty() {
+        Vec::new()
+    } else {
+        hex::decode(&aad_hex)
+            .unwrap_or_else(|e| panic!("Bad --aad-hex value: {e}"))
+    };
 
     // Load files
     let params: puzzle::PuzzleParams = load_json(&puzzle, "puzzle params");
@@ -152,7 +172,11 @@ fn cmd_lock(puzzle: PathBuf, secret: PathBuf, input: PathBuf, output: PathBuf) {
         .unwrap_or_else(|e| panic!("Cannot read {}: {e}", input.display()));
 
     println!("Input:  {} ({} bytes)", input.display(), plaintext.len());
-    println!("Puzzle: {} squarings required\n", params.t_ops);
+    println!("Puzzle: {} squarings required", params.t_ops);
+    if !aad.is_empty() {
+        println!("AAD:    {} bytes (round-binding active)", aad.len());
+    }
+    println!();
 
     // Admin fast path: compute K using φ(N) shortcut
     println!("Computing K via φ(N) shortcut (fast) ...");
@@ -161,7 +185,7 @@ fn cmd_lock(puzzle: PathBuf, secret: PathBuf, input: PathBuf, output: PathBuf) {
 
     // Encrypt
     println!("Encrypting with AES-256-GCM ...");
-    let locked = crypto::encrypt(&k, &plaintext);
+    let locked = crypto::encrypt(&k, &plaintext, &aad);
     let locked_json = serde_json::to_string_pretty(&locked)
         .expect("Failed to serialize locked payload");
     fs::write(&output, &locked_json)
@@ -181,20 +205,31 @@ fn cmd_lock(puzzle: PathBuf, secret: PathBuf, input: PathBuf, output: PathBuf) {
     println!("└──────────────────────────────────────────────────────┘");
 }
 
-fn cmd_solve(puzzle: PathBuf, locked: PathBuf, output: PathBuf) {
+fn cmd_solve(puzzle: PathBuf, locked: PathBuf, output: PathBuf, aad_hex: String) {
     println!("╔══════════════════════════════════════════╗");
     println!("║     VAJRA — Solve & Decrypt (Center)     ║");
     println!("╚══════════════════════════════════════════╝\n");
 
+    let aad: Vec<u8> = if aad_hex.is_empty() {
+        Vec::new()
+    } else {
+        hex::decode(&aad_hex)
+            .unwrap_or_else(|e| panic!("Bad --aad-hex value: {e}"))
+    };
+
     let params: puzzle::PuzzleParams = load_json(&puzzle, "puzzle params");
     let locked_data: crypto::LockedPayload = load_json(&locked, "locked exam");
+
+    if !aad.is_empty() {
+        println!("AAD:    {} bytes (round-binding verified at decrypt)", aad.len());
+    }
 
     // Slow path: sequential squaring
     let k = puzzle::solve(&params);
 
     // Decrypt
     println!("Decrypting exam ...");
-    match crypto::decrypt(&k, &locked_data) {
+    match crypto::decrypt(&k, &locked_data, &aad) {
         Ok(plaintext) => {
             fs::write(&output, &plaintext)
                 .unwrap_or_else(|e| panic!("Cannot write {}: {e}", output.display()));
@@ -203,7 +238,8 @@ fn cmd_solve(puzzle: PathBuf, locked: PathBuf, output: PathBuf) {
         }
         Err(e) => {
             eprintln!("\n✗ Decryption failed: {e}");
-            eprintln!("  This should not happen if puzzle.json and locked.json are untampered.");
+            eprintln!("  This should not happen if puzzle.json and locked.json are untampered");
+            eprintln!("  and --aad-hex matches the value used at lock time.");
             std::process::exit(1);
         }
     }
@@ -249,11 +285,11 @@ fn main() {
         Commands::Generate { time, puzzle_out, secret_out } => {
             cmd_generate(time, puzzle_out, secret_out);
         }
-        Commands::Lock { puzzle, secret, input, output } => {
-            cmd_lock(puzzle, secret, input, output);
+        Commands::Lock { puzzle, secret, input, output, aad_hex } => {
+            cmd_lock(puzzle, secret, input, output, aad_hex);
         }
-        Commands::Solve { puzzle, locked, output } => {
-            cmd_solve(puzzle, locked, output);
+        Commands::Solve { puzzle, locked, output, aad_hex } => {
+            cmd_solve(puzzle, locked, output, aad_hex);
         }
         Commands::Bench { bits, duration } => {
             cmd_bench(bits, duration);
