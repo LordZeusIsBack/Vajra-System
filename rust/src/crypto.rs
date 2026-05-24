@@ -5,7 +5,7 @@
 /// encrypted/decrypted with AES-256-GCM (authenticated, so tampering is detectable).
 
 use aes_gcm::{
-    aead::{Aead, KeyInit},
+    aead::{Aead, KeyInit, Payload},
     Aes256Gcm, Nonce,
 };
 use num_bigint::BigUint;
@@ -45,7 +45,17 @@ fn derive_aes_key(k: &BigUint) -> [u8; 32] {
 /// A fresh random 96-bit nonce is generated for every call.
 /// The GCM authentication tag (appended to ciphertext) ensures any tampering
 /// is caught during decryption — even one flipped bit causes failure.
-pub fn encrypt(k: &BigUint, plaintext: &[u8]) -> LockedPayload {
+///
+/// `aad` (additional authenticated data) is NOT encrypted — but it IS bound to
+/// the auth tag. Decryption must supply the same AAD bytes or the tag fails.
+/// VAJRA uses this to bind a lock to a specific drand round: the AAD is
+/// `SHA256("vajra-v1" || target_round || chain_hash)`, derived identically on
+/// the unlock side from manifest fields. An attacker who modifies the manifest's
+/// `target_round` breaks the HMAC (rejected before decryption); and even if they
+/// could bypass that, the AAD mismatch causes AES-GCM auth failure.
+///
+/// Pass `&[]` for empty AAD (equivalent to "no AAD" in the GCM spec).
+pub fn encrypt(k: &BigUint, plaintext: &[u8], aad: &[u8]) -> LockedPayload {
     let key_bytes = derive_aes_key(k);
     let cipher = Aes256Gcm::new_from_slice(&key_bytes)
         .expect("Key is always 32 bytes; this cannot fail");
@@ -56,7 +66,7 @@ pub fn encrypt(k: &BigUint, plaintext: &[u8]) -> LockedPayload {
     let nonce = Nonce::from_slice(&nonce_bytes);
 
     let ciphertext = cipher
-        .encrypt(nonce, plaintext)
+        .encrypt(nonce, Payload { msg: plaintext, aad })
         .expect("AES-GCM encryption failed — this should not happen");
 
     LockedPayload {
@@ -67,11 +77,15 @@ pub fn encrypt(k: &BigUint, plaintext: &[u8]) -> LockedPayload {
 
 /// Decrypt a `LockedPayload` using AES-256-GCM with a key derived from K.
 ///
+/// `aad` must be byte-identical to the AAD supplied at encrypt time, or the
+/// auth tag fails and decryption returns `Err`. Pass `&[]` if no AAD was used.
+///
 /// Returns `Err` if:
 ///  - The key is wrong (wrong K → decryption key mismatch)
+///  - The AAD differs from encrypt time
 ///  - The ciphertext was tampered with (GCM auth tag fails)
 ///  - The nonce or ciphertext hex is malformed
-pub fn decrypt(k: &BigUint, locked: &LockedPayload) -> Result<Vec<u8>, String> {
+pub fn decrypt(k: &BigUint, locked: &LockedPayload, aad: &[u8]) -> Result<Vec<u8>, String> {
     let key_bytes = derive_aes_key(k);
     let cipher = Aes256Gcm::new_from_slice(&key_bytes)
         .expect("Key is always 32 bytes");
@@ -88,10 +102,10 @@ pub fn decrypt(k: &BigUint, locked: &LockedPayload) -> Result<Vec<u8>, String> {
     let nonce = Nonce::from_slice(&nonce_bytes);
 
     cipher
-        .decrypt(nonce, ciphertext.as_ref())
+        .decrypt(nonce, Payload { msg: ciphertext.as_ref(), aad })
         .map_err(|_| {
-            "Decryption failed — the time-lock key is incorrect, or the \
-             ciphertext has been tampered with."
+            "Decryption failed — the time-lock key is incorrect, the AAD does \
+             not match, or the ciphertext has been tampered with."
                 .to_string()
         })
 }
