@@ -1,37 +1,57 @@
 """reconstruct.py — Recover the original PDF from a VAJRA manifest CID.
 
 USAGE (as a library, from Python):
-    pdf_bytes = await reconstruct_pdf(manifest_cid, ipfs, "/path/to/vajra")
+    pdf_bytes = await reconstruct_pdf(
+        manifest_cid, ipfs, "/path/to/vajra",
+        center_keys={3: "...privkey_hex...", 7: "...privkey_hex...", ...},
+    )
 
-USAGE (as a CLI, for an exam center):
-    python reconstruct.py <manifest_cid> --shards 0,2,3,5,6,7,8,9 \\
-        --vajra ../rust/target/release/vajra --out exam.pdf
+USAGE (as a CLI, for an admin / coordinator at exam time):
+    python reconstruct.py <manifest_cid> \\
+        --vajra ../rust/target/release/vajra \\
+        --center-key keys/CENTER_003.json \\
+        --center-key keys/CENTER_007.json \\
+        --center-key keys/CENTER_011.json \\
+        ...
+        --out exam.pdf
 
 PIPELINE
   1. Fetch + HMAC-verify manifest.
   2. **Layer A policy gate:** require drand `target_round` to have published.
-     Check the local clock first (cheap), then fetch the round from ≥ 2
-     relays for agreement. Refuse to proceed if either fails.
+     Check the local clock first (cheap), then fetch from ≥ 2 relays.
   3. Re-derive AAD from manifest fields: SHA256("vajra-v1" || target_round || chain_hash).
-  4. Fetch k shards in parallel (any reachable IPFS node serves each CID).
-  5. Reconstruct data_key via Shamir.
-  6. Fetch payload.bin and undo the outer AES-GCM wrap (with AAD) → locked.json bytes.
+  4. For each provided center privkey: fetch THE specific shard for that
+     center (manifest's centers[i].pubkey decides which) and decrypt with
+     the privkey. Plaintext Shamir share goes into the combine bucket.
+  5. Once ≥ k decrypted shares are collected, Shamir-combine → data_key.
+  6. Fetch payload.bin and undo the outer AES-GCM wrap (with AAD) → locked.json.
   7. Fetch puzzle.json.
   8. Run `vajra solve --aad-hex <AAD> …` and read the PDF back.
 
-HONEST CAVEAT (the user must surface this in any explainer)
-  Step 2 is *policy*, not cryptography. An attacker holding the manifest, k
-  shards, and puzzle.json can bypass this script and run `vajra solve` directly.
-  The AAD binding (step 3) DOES catch tampering with target_round in the
-  manifest itself — that's cryptographic. But the AAD doesn't prove the round
-  has published, only which round was targeted. Full cryptographic
-  time-gating requires Layer B (drand timelock encryption, TLE).
+DECENTRALIZED MODEL (matches the architecture story)
+  Each `--center-key` flag represents one cooperating center submitting
+  their decrypted share. In a real deployment, the k centers would each
+  decrypt their shard locally on their own machine (using `vajra-center
+  decrypt`) and submit ONLY the resulting plaintext share to a coordinator
+  process that runs Shamir combine + the rest of this pipeline. This script
+  models that flow honestly: if you only have access to your own keypair,
+  you can only decrypt one shard, and you still need k-1 other shares from
+  other centers to reconstruct anything. The plaintext shares from each
+  center reveal nothing about data_key on their own — Shamir's information-
+  theoretic security guarantees this.
+
+HONEST CAVEAT
+  Step 2 (drand publish check) is *policy*, not cryptography. An attacker
+  holding the manifest, k center privkeys, and puzzle.json can bypass this
+  script. The AAD binding catches manifest tampering — that's cryptographic.
+  Full cryptographic time-gating requires Layer B (drand timelock encryption).
 """
 
 from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import logging
 import sys
 import tempfile
@@ -40,6 +60,11 @@ from typing import Sequence
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
+from centers import (
+    CentersError,
+    EncryptedShard,
+    decrypt_share_with_privkey,
+)
 from drand_client import (
     DrandError,
     derive_aad,
@@ -51,6 +76,27 @@ from shamir import reconstruct as shamir_reconstruct
 
 
 log = logging.getLogger("reconstruct")
+
+
+# ── Center keypair loading (CLI convenience) ──────────────────────────────────
+
+
+def load_center_keypair(path: str | Path) -> tuple[str, str]:
+    """Load a center keypair file written by vajra_keygen.
+
+    Returns (id, privkey_hex). Raises ReconstructError on any problem.
+    """
+    p = Path(path)
+    if not p.exists():
+        raise ReconstructError(f"Keypair file not found: {p}")
+    try:
+        data = json.loads(p.read_text())
+    except json.JSONDecodeError as exc:
+        raise ReconstructError(f"Keypair file {p} is not valid JSON: {exc}") from exc
+    for k in ("id", "privkey"):
+        if k not in data:
+            raise ReconstructError(f"Keypair file {p} missing '{k}'")
+    return str(data["id"]), str(data["privkey"])
 
 
 # ── Exceptions ────────────────────────────────────────────────────────────────
@@ -109,7 +155,7 @@ async def reconstruct_pdf(
     ipfs: IPFSClient,
     vajra_binary: str | Path,
     *,
-    shard_indices: list[int] | None = None,
+    center_keys: dict[int, str],
     skip_drand_check: bool = False,
 ) -> bytes:
     """Reconstruct the original exam PDF from an IPFS manifest CID.
@@ -118,14 +164,14 @@ async def reconstruct_pdf(
         manifest_cid:     CID of the signed manifest.json on IPFS.
         ipfs:             IPFSClient instance.
         vajra_binary:     Path to the compiled `vajra` Rust binary.
-        shard_indices:    Which entries of manifest["shard_cids"] to pull.
-                          Defaults to the first k entries. Must contain ≥ k
-                          distinct indices.
-        skip_drand_check: If True, skip the Layer A time gate (drand publish
-                          verification). The AAD is still threaded through —
-                          this only skips the network/clock policy check.
-                          USE ONLY FOR OFFLINE TESTING. Honest operators
-                          should never set this in production.
+        center_keys:      Map of center_index (0-based, as in manifest's
+                          centers list) → X25519 privkey hex. Must contain
+                          ≥ k entries. Plaintext Shamir shares are derived
+                          locally from these privkeys + the encrypted shards
+                          on IPFS; the admin never sees a privkey.
+        skip_drand_check: If True, skip the Layer A network/clock policy
+                          check. AAD is still cryptographically threaded.
+                          USE ONLY FOR OFFLINE TESTING.
 
     Returns:
         Decrypted PDF bytes.
@@ -148,7 +194,10 @@ async def reconstruct_pdf(
              manifest.get("exam_id"), manifest.get("n"), manifest.get("k"))
 
     # ── 2. Validate manifest shape ────────────────────────────────────────────
-    required = ("puzzle_cid", "payload_cid", "nonce", "shard_cids", "k", "n", "drand")
+    required = (
+        "puzzle_cid", "payload_cid", "nonce", "shard_cids",
+        "centers", "k", "n", "drand",
+    )
     missing = [f for f in required if f not in manifest]
     if missing:
         raise ReconstructError(f"Manifest missing required fields: {missing}")
@@ -157,6 +206,17 @@ async def reconstruct_pdf(
     k_val = int(manifest["k"])
     if n_val < 2 or k_val < 2 or k_val > n_val:
         raise ReconstructError(f"Manifest has illegal (n={n_val}, k={k_val})")
+
+    centers_block = manifest["centers"]
+    if len(centers_block) != n_val:
+        raise ReconstructError(
+            f"Manifest centers count {len(centers_block)} ≠ n={n_val}"
+        )
+    shard_cids_block = manifest["shard_cids"]
+    if len(shard_cids_block) != n_val:
+        raise ReconstructError(
+            f"Manifest shard_cids count {len(shard_cids_block)} ≠ n={n_val}"
+        )
 
     drand_block = manifest["drand"]
     drand_required = {"chain_hash", "target_round", "publish_time"}
@@ -169,8 +229,6 @@ async def reconstruct_pdf(
     target_round = int(drand_block["target_round"])
 
     # ── 2a. Layer A: drand policy gate ────────────────────────────────────────
-    #     Refuse unless the target round has provably published. This is policy,
-    #     not crypto — see HONEST CAVEAT in module docstring.
     if skip_drand_check:
         log.warning(
             "⚠  --skip-drand-check enabled — bypassing the time gate. "
@@ -189,57 +247,99 @@ async def reconstruct_pdf(
         )
 
     # ── 2b. Derive the AAD that both AES-GCM layers will require ──────────────
-    #     This is the same SHA-256 used at lock time. Tampering with target_round
-    #     or chain_hash in the manifest would (a) break the HMAC check above and
-    #     (b) also produce an AAD that fails to decrypt both layers.
     try:
         aad = derive_aad(target_round, chain_hash)
     except ValueError as exc:
         raise ReconstructError(f"Cannot derive AAD: {exc}") from exc
     log.info("AAD derived (%d bytes) — binding to drand round %d", len(aad), target_round)
 
-    # ── 3. Pick which shards to use ───────────────────────────────────────────
-    all_shards = manifest["shard_cids"]
-    if shard_indices is None:
-        shard_list = all_shards[:k_val]
-    else:
-        if len(shard_indices) < k_val:
-            raise ReconstructError(
-                f"Need ≥ {k_val} shards (k from manifest), got {len(shard_indices)}"
-            )
-        if len(set(shard_indices)) != len(shard_indices):
-            raise ReconstructError("Duplicate shard indices passed")
-        bad = [i for i in shard_indices if i < 0 or i >= len(all_shards)]
-        if bad:
-            raise ReconstructError(f"Out-of-range shard indices: {bad}")
-        # Use exactly k — extras would still work but waste IPFS calls
-        shard_list = [all_shards[i] for i in shard_indices[:k_val]]
+    # ── 3. Validate that the caller has enough center privkeys ────────────────
+    if len(center_keys) < k_val:
+        raise ReconstructError(
+            f"Need ≥ {k_val} center privkeys (k from manifest), "
+            f"got {len(center_keys)}. Without enough cooperating centers, "
+            f"Shamir reconstruction is information-theoretically impossible."
+        )
+    bad_indices = [i for i in center_keys if i < 0 or i >= n_val]
+    if bad_indices:
+        raise ReconstructError(
+            f"Center indices out of range [0, {n_val}): {bad_indices}"
+        )
 
-    # ── 4. Fetch shard JSONs in parallel ──────────────────────────────────────
-    log.info("Fetching %d shards in parallel ...", len(shard_list))
-    shard_jsons = await _fetch_shards_parallel(shard_list, ipfs)
+    # Use exactly k privkeys — extras would waste IPFS calls AND give an
+    # attacker who steals a coordinator's logs more information than needed.
+    selected_indices = sorted(center_keys.keys())[:k_val]
+    log.info(
+        "Using center indices: %s (out of %d registered)",
+        selected_indices, n_val,
+    )
 
-    # ── 5. Parse each shard into (x, share_bytes) for Shamir ──────────────────
+    # ── 4. Fetch the k selected shards in parallel ────────────────────────────
+    shard_infos = [shard_cids_block[i] for i in selected_indices]
+    log.info("Fetching %d encrypted shards in parallel ...", len(shard_infos))
+    shard_jsons = await _fetch_shards_parallel(shard_infos, ipfs)
+
+    # ── 5. Decrypt each shard with its center's privkey, parse for Shamir ────
+    # Each shard's plaintext is a Shamir share: 1 byte x-coord + 32 bytes
+    # of polynomial evaluations. We feed exactly this layout into
+    # shamir.reconstruct.
     shamir_inputs: list[bytes] = []
     seen_x: set[int] = set()
-    for sj, info in zip(shard_jsons, shard_list):
+    for center_idx, sj, info in zip(selected_indices, shard_jsons, shard_infos):
         cid = info["cid"]
-        if "x" not in sj or "share_hex" not in sj:
-            raise ReconstructError(f"Shard {cid} is malformed (missing x or share_hex)")
-        x = int(sj["x"])
-        if x in seen_x:
-            raise ReconstructError(f"Duplicate Shamir x-coord {x} in shard {cid}")
-        seen_x.add(x)
+
+        # Cross-check the shard's stated center_id against the manifest. This
+        # is belt-and-braces — the manifest HMAC already covered this, but if
+        # the shard itself was swapped on IPFS, this is where it shows up.
+        expected_center = centers_block[center_idx]
+        if sj.get("center_id") != expected_center["id"]:
+            raise ReconstructError(
+                f"Shard {cid} claims center_id={sj.get('center_id')!r} but "
+                f"manifest says centers[{center_idx}].id={expected_center['id']!r}. "
+                f"Possible IPFS-level tampering."
+            )
+
         try:
-            share_bytes = bytes.fromhex(sj["share_hex"])
-        except ValueError as exc:
-            raise ReconstructError(f"Bad share_hex in shard {cid}: {exc}") from exc
-        # shamir.reconstruct expects: bytes([x]) + f(x) for each secret byte
-        shamir_inputs.append(bytes([x]) + share_bytes)
+            enc_shard = EncryptedShard.from_dict(sj)
+        except KeyError as exc:
+            raise ReconstructError(
+                f"Shard {cid} missing encryption field: {exc}"
+            ) from exc
+
+        try:
+            plaintext_share = decrypt_share_with_privkey(
+                enc_shard, center_keys[center_idx],
+            )
+        except CentersError as exc:
+            raise ReconstructError(
+                f"Cannot decrypt shard for center index {center_idx} "
+                f"(id={expected_center['id']!r}): {exc}"
+            ) from exc
+
+        if len(plaintext_share) < 2:
+            raise ReconstructError(
+                f"Decrypted share for center {center_idx} is too short "
+                f"({len(plaintext_share)} bytes — expected ≥ 2)"
+            )
+
+        x = plaintext_share[0]
+        if x in seen_x:
+            raise ReconstructError(
+                f"Duplicate Shamir x-coord {x} after decryption — "
+                f"two centers' shards yielded the same x. Manifest may be corrupt."
+            )
+        seen_x.add(x)
+
+        # shamir.reconstruct expects: bytes([x]) + f_b(x) for each secret byte.
+        # That's exactly the layout produced by shamir.split — so we pass the
+        # plaintext share through verbatim.
+        shamir_inputs.append(plaintext_share)
+
+    log.info("All %d shards decrypted; combining via Shamir ...", len(shamir_inputs))
 
     # ── 6. Reconstruct data_key ───────────────────────────────────────────────
     try:
-        data_key = shamir_reconstruct(shamir_inputs)
+        data_key = shamir_reconstruct(shamir_inputs, expected_threshold=k_val)
     except Exception as exc:
         raise ReconstructError(f"Shamir reconstruction failed: {exc}") from exc
     if len(data_key) != 32:
@@ -327,14 +427,21 @@ async def reconstruct_pdf(
 
 def _parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(
-        description="VAJRA — reconstruct an exam PDF from an IPFS manifest CID.",
+        description="VAJRA — reconstruct an exam PDF from an IPFS manifest CID. "
+                    "Models the decentralized k-of-n cooperation flow: pass one "
+                    "--center-key per cooperating center.",
     )
     p.add_argument("manifest_cid", help="CID of manifest.json on IPFS")
     p.add_argument(
-        "--shards",
+        "--center-key",
+        action="append",
+        default=[],
+        metavar="KEYPAIR_JSON",
         help=(
-            "Comma-separated 0-based shard indices to use "
-            "(e.g. '0,1,2,3,4,5,6,7'). Defaults to the first k from the manifest."
+            "Path to a center's keypair JSON (from vajra_keygen). "
+            "Pass this flag once per cooperating center. The center's "
+            "position in the manifest's centers list is read from the "
+            "keypair file's `id` field. Must supply ≥ k to reconstruct."
         ),
     )
     p.add_argument("--vajra", required=True, help="Path to the compiled vajra binary")
@@ -344,12 +451,61 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help=(
             "Bypass the drand publish-time gate (Layer A policy check). "
-            "The AAD is still verified cryptographically; only the wall-clock "
-            "policy is skipped. Use for offline testing only."
+            "The AAD is still verified cryptographically; only the "
+            "wall-clock policy is skipped. Use for offline testing only."
         ),
     )
     p.add_argument("-v", "--verbose", action="store_true")
     return p.parse_args()
+
+
+async def _resolve_center_keys(
+    keypair_paths: list[str],
+    manifest_cid: str,
+    ipfs: IPFSClient,
+) -> dict[int, str]:
+    """Translate a list of keypair file paths into the center_index→privkey map
+    that reconstruct_pdf wants. We need the manifest to know each ID's index."""
+    if not keypair_paths:
+        raise ReconstructError(
+            "No --center-key flags given. Need ≥ k to reconstruct. "
+            "Each cooperating center should run vajra_keygen and the "
+            "coordinator collects the keypair files."
+        )
+
+    # Tiny double-fetch: reconstruct_pdf will fetch the manifest again. That's
+    # fine — manifests are small, and this lets _resolve_center_keys be a
+    # standalone helper. If you cared about a single fetch, you could refactor
+    # the manifest into a class.
+    try:
+        manifest = await ipfs.cat_json(manifest_cid)
+    except IPFSError as exc:
+        raise ReconstructError(f"Cannot fetch manifest {manifest_cid}: {exc}") from exc
+
+    if "centers" not in manifest:
+        raise ReconstructError(
+            "Manifest is missing 'centers' block (pre-Step-2 manifest?). "
+            "Old manifests are not supported."
+        )
+    id_to_index = {c["id"]: int(c["index"]) for c in manifest["centers"]}
+
+    out: dict[int, str] = {}
+    for path in keypair_paths:
+        cid_str, privkey_hex = load_center_keypair(path)
+        if cid_str not in id_to_index:
+            raise ReconstructError(
+                f"Keypair {path} is for center {cid_str!r}, but the manifest "
+                f"only knows about centers: {sorted(id_to_index)}"
+            )
+        idx = id_to_index[cid_str]
+        if idx in out:
+            raise ReconstructError(
+                f"Two --center-key files claim center index {idx} "
+                f"(both have id={cid_str!r})"
+            )
+        out[idx] = privkey_hex
+
+    return out
 
 
 async def _main() -> int:
@@ -359,20 +515,13 @@ async def _main() -> int:
         format="%(asctime)s [%(name)s] %(message)s",
     )
 
-    shard_indices: list[int] | None = None
-    if args.shards:
-        try:
-            shard_indices = [int(s.strip()) for s in args.shards.split(",") if s.strip()]
-        except ValueError:
-            log.error("Could not parse --shards: %r", args.shards)
-            return 2
-
     ipfs = IPFSClient()  # reads settings.ipfs_node_list
 
     try:
+        center_keys = await _resolve_center_keys(args.center_key, args.manifest_cid, ipfs)
         pdf = await reconstruct_pdf(
             args.manifest_cid, ipfs, args.vajra,
-            shard_indices=shard_indices,
+            center_keys=center_keys,
             skip_drand_check=args.skip_drand_check,
         )
     except (ManifestVerificationError, ReconstructError) as exc:
