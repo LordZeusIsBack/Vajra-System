@@ -83,6 +83,16 @@ class Settings(BaseSettings):
         description="Max exam PDF upload size in bytes (default 50 MB)",
     )
 
+    # ── Centers registry (Step 2: per-center encryption) ─────────────────────
+    centers_registry_path: str = Field(
+        default="./centers.json",
+        description=(
+            "Path to centers registry JSON ({centers: [{id, pubkey}, ...]}). "
+            "Required for the per-center shard encryption pipeline. "
+            "Generate with: python vajra_keygen.py bulk --n 10 --out-dir ./keys"
+        ),
+    )
+
     # ── drand (Layer A: time-anchor) ──────────────────────────────────────────
     # League of Entropy mainnet, 30s chained chain.
     # Constants are public — see https://drand.love
