@@ -83,6 +83,58 @@ class Settings(BaseSettings):
         description="Max exam PDF upload size in bytes (default 50 MB)",
     )
 
+    # ── drand (Layer A: time-anchor) ──────────────────────────────────────────
+    # League of Entropy mainnet, 30s chained chain.
+    # Constants are public — see https://drand.love
+    drand_chain_hash: str = Field(
+        default="8990e7a9aaed2ffed73dbd7092123d6f289930540d7651336225dc172e51b2ce",
+        description="Hex chain hash of the drand chain VAJRA is anchored to",
+    )
+    drand_genesis: int = Field(
+        default=1595431050,
+        description="Unix-seconds genesis time of the configured drand chain",
+    )
+    drand_period: int = Field(
+        default=30,
+        ge=1,
+        description="Seconds between drand rounds on the configured chain",
+    )
+    drand_relays: str = Field(
+        default=(
+            "https://api.drand.sh,"
+            "https://api2.drand.sh,"
+            "https://api3.drand.sh,"
+            "https://drand.cloudflare.com"
+        ),
+        description="Comma-separated drand HTTP relay base URLs",
+    )
+    drand_agreement_threshold: int = Field(
+        default=2,
+        ge=1,
+        description=(
+            "Minimum number of relays that must return identical signature + "
+            "randomness for a round before we trust it. With 4 relays, 2 is "
+            "a sensible default (tolerates 2 down or 1 dishonest)."
+        ),
+    )
+    drand_timeout_secs: int = Field(
+        default=10,
+        ge=1,
+        description="Per-request HTTP timeout when fetching drand rounds",
+    )
+
+    @property
+    def drand_relay_list(self) -> list[str]:
+        """Parsed, deduplicated drand relay base URLs (no trailing slash)."""
+        seen: set[str] = set()
+        result: list[str] = []
+        for raw in self.drand_relays.split(","):
+            url = raw.strip().rstrip("/")
+            if url and url not in seen:
+                seen.add(url)
+                result.append(url)
+        return result
+
     # ── Validators ────────────────────────────────────────────────────────────
 
     @field_validator("ipfs_api_urls")
@@ -91,6 +143,28 @@ class Settings(BaseSettings):
         urls = [u.strip() for u in v.split(",") if u.strip()]
         if not urls:
             raise ValueError("IPFS_API_URLS must contain at least one URL")
+        return v
+
+    @field_validator("drand_chain_hash")
+    @classmethod
+    def chain_hash_is_32_bytes(cls, v: str) -> str:
+        try:
+            raw = bytes.fromhex(v)
+        except ValueError as exc:
+            raise ValueError(f"DRAND_CHAIN_HASH must be hex: {exc}")
+        if len(raw) != 32:
+            raise ValueError(
+                f"DRAND_CHAIN_HASH must be exactly 32 bytes (64 hex chars), "
+                f"got {len(raw)} bytes"
+            )
+        return v
+
+    @field_validator("drand_relays")
+    @classmethod
+    def at_least_one_relay(cls, v: str) -> str:
+        urls = [u.strip() for u in v.split(",") if u.strip()]
+        if not urls:
+            raise ValueError("DRAND_RELAYS must contain at least one URL")
         return v
 
     @field_validator("manifest_hmac_secret")
@@ -129,6 +203,12 @@ class Settings(BaseSettings):
         if self.default_k < self.min_threshold:
             raise ValueError(
                 f"DEFAULT_K ({self.default_k}) must be ≥ MIN_THRESHOLD ({self.min_threshold})"
+            )
+        # drand: agreement threshold must be ≤ number of relays
+        if self.drand_agreement_threshold > len(self.drand_relay_list):
+            raise ValueError(
+                f"DRAND_AGREEMENT_THRESHOLD ({self.drand_agreement_threshold}) "
+                f"cannot exceed number of relays ({len(self.drand_relay_list)})"
             )
         return self
 
