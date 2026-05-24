@@ -9,17 +9,23 @@ USAGE (as a CLI, for an exam center):
 
 PIPELINE
   1. Fetch + HMAC-verify manifest.
-  2. Fetch k shards in parallel (any reachable node serves each CID).
-  3. Reconstruct data_key via Shamir.
-  4. Fetch payload.bin and undo the outer AES-GCM wrap → locked.json bytes.
-  5. Fetch puzzle.json.
-  6. Run `vajra solve --puzzle … --locked … --output …` and read the PDF back.
+  2. **Layer A policy gate:** require drand `target_round` to have published.
+     Check the local clock first (cheap), then fetch the round from ≥ 2
+     relays for agreement. Refuse to proceed if either fails.
+  3. Re-derive AAD from manifest fields: SHA256("vajra-v1" || target_round || chain_hash).
+  4. Fetch k shards in parallel (any reachable IPFS node serves each CID).
+  5. Reconstruct data_key via Shamir.
+  6. Fetch payload.bin and undo the outer AES-GCM wrap (with AAD) → locked.json bytes.
+  7. Fetch puzzle.json.
+  8. Run `vajra solve --aad-hex <AAD> …` and read the PDF back.
 
-NOTE ON FIX
-  Earlier this module did `return stdout` from the subprocess. The Rust CLI
-  writes the PDF to a FILE and prints banners to stdout, so the caller was
-  getting box-drawing characters instead of a PDF. We now read the output
-  file explicitly.
+HONEST CAVEAT (the user must surface this in any explainer)
+  Step 2 is *policy*, not cryptography. An attacker holding the manifest, k
+  shards, and puzzle.json can bypass this script and run `vajra solve` directly.
+  The AAD binding (step 3) DOES catch tampering with target_round in the
+  manifest itself — that's cryptographic. But the AAD doesn't prove the round
+  has published, only which round was targeted. Full cryptographic
+  time-gating requires Layer B (drand timelock encryption, TLE).
 """
 
 from __future__ import annotations
@@ -34,6 +40,11 @@ from typing import Sequence
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
+from drand_client import (
+    DrandError,
+    derive_aad,
+    verify_round_published,
+)
 from ipfs_client import IPFSClient, IPFSError
 from manifest import verify as verify_manifest
 from shamir import reconstruct as shamir_reconstruct
@@ -99,16 +110,22 @@ async def reconstruct_pdf(
     vajra_binary: str | Path,
     *,
     shard_indices: list[int] | None = None,
+    skip_drand_check: bool = False,
 ) -> bytes:
     """Reconstruct the original exam PDF from an IPFS manifest CID.
 
     Args:
-        manifest_cid:   CID of the signed manifest.json on IPFS.
-        ipfs:           IPFSClient instance.
-        vajra_binary:   Path to the compiled `vajra` Rust binary.
-        shard_indices:  Which entries of manifest["shard_cids"] to pull.
-                        Defaults to the first k entries. Must contain ≥ k
-                        distinct indices.
+        manifest_cid:     CID of the signed manifest.json on IPFS.
+        ipfs:             IPFSClient instance.
+        vajra_binary:     Path to the compiled `vajra` Rust binary.
+        shard_indices:    Which entries of manifest["shard_cids"] to pull.
+                          Defaults to the first k entries. Must contain ≥ k
+                          distinct indices.
+        skip_drand_check: If True, skip the Layer A time gate (drand publish
+                          verification). The AAD is still threaded through —
+                          this only skips the network/clock policy check.
+                          USE ONLY FOR OFFLINE TESTING. Honest operators
+                          should never set this in production.
 
     Returns:
         Decrypted PDF bytes.
@@ -131,7 +148,7 @@ async def reconstruct_pdf(
              manifest.get("exam_id"), manifest.get("n"), manifest.get("k"))
 
     # ── 2. Validate manifest shape ────────────────────────────────────────────
-    required = ("puzzle_cid", "payload_cid", "nonce", "shard_cids", "k", "n")
+    required = ("puzzle_cid", "payload_cid", "nonce", "shard_cids", "k", "n", "drand")
     missing = [f for f in required if f not in manifest]
     if missing:
         raise ReconstructError(f"Manifest missing required fields: {missing}")
@@ -140,6 +157,46 @@ async def reconstruct_pdf(
     k_val = int(manifest["k"])
     if n_val < 2 or k_val < 2 or k_val > n_val:
         raise ReconstructError(f"Manifest has illegal (n={n_val}, k={k_val})")
+
+    drand_block = manifest["drand"]
+    drand_required = {"chain_hash", "target_round", "publish_time"}
+    drand_missing = drand_required - drand_block.keys()
+    if drand_missing:
+        raise ReconstructError(
+            f"Manifest 'drand' missing required fields: {sorted(drand_missing)}"
+        )
+    chain_hash   = str(drand_block["chain_hash"])
+    target_round = int(drand_block["target_round"])
+
+    # ── 2a. Layer A: drand policy gate ────────────────────────────────────────
+    #     Refuse unless the target round has provably published. This is policy,
+    #     not crypto — see HONEST CAVEAT in module docstring.
+    if skip_drand_check:
+        log.warning(
+            "⚠  --skip-drand-check enabled — bypassing the time gate. "
+            "This is for offline testing only."
+        )
+    else:
+        try:
+            round_info = await verify_round_published(
+                target_round, chain_hash=chain_hash,
+            )
+        except DrandError as exc:
+            raise ReconstructError(f"drand time-gate refused: {exc}") from exc
+        log.info(
+            "drand round %d verified published (randomness=%s…)",
+            round_info.round, round_info.randomness[:16],
+        )
+
+    # ── 2b. Derive the AAD that both AES-GCM layers will require ──────────────
+    #     This is the same SHA-256 used at lock time. Tampering with target_round
+    #     or chain_hash in the manifest would (a) break the HMAC check above and
+    #     (b) also produce an AAD that fails to decrypt both layers.
+    try:
+        aad = derive_aad(target_round, chain_hash)
+    except ValueError as exc:
+        raise ReconstructError(f"Cannot derive AAD: {exc}") from exc
+    log.info("AAD derived (%d bytes) — binding to drand round %d", len(aad), target_round)
 
     # ── 3. Pick which shards to use ───────────────────────────────────────────
     all_shards = manifest["shard_cids"]
@@ -201,12 +258,14 @@ async def reconstruct_pdf(
         raise ReconstructError(f"Nonce must be 12 bytes, got {len(nonce)}")
 
     try:
-        locked_bytes = AESGCM(data_key).decrypt(nonce, payload_bytes, associated_data=None)
+        locked_bytes = AESGCM(data_key).decrypt(nonce, payload_bytes, associated_data=aad)
     except Exception as exc:
-        # Most likely cause: wrong data_key (bad shards), or tampered payload.
+        # Most likely cause: wrong data_key (bad shards), tampered payload, or
+        # AAD mismatch (manifest target_round / chain_hash was tampered).
         raise ReconstructError(
             "Outer AES-GCM decryption failed. Either the Shamir shards are "
-            "wrong/insufficient or the payload has been tampered with."
+            "wrong/insufficient, the payload has been tampered with, or the "
+            "manifest's drand fields don't match what was used at lock time."
         ) from exc
     log.info("Outer layer unwrapped (%d bytes → locked.json)", len(locked_bytes))
 
@@ -227,9 +286,10 @@ async def reconstruct_pdf(
 
         args = [
             str(vajra_binary), "solve",
-            "--puzzle", str(puzzle_path),
-            "--locked", str(locked_path),
-            "--output", str(out_path),
+            "--puzzle",   str(puzzle_path),
+            "--locked",   str(locked_path),
+            "--output",   str(out_path),
+            "--aad-hex",  aad.hex(),
         ]
         log.info("Running: %s", " ".join(args))
 
@@ -279,6 +339,15 @@ def _parse_args() -> argparse.Namespace:
     )
     p.add_argument("--vajra", required=True, help="Path to the compiled vajra binary")
     p.add_argument("--out", default="exam.pdf", help="Output PDF path")
+    p.add_argument(
+        "--skip-drand-check",
+        action="store_true",
+        help=(
+            "Bypass the drand publish-time gate (Layer A policy check). "
+            "The AAD is still verified cryptographically; only the wall-clock "
+            "policy is skipped. Use for offline testing only."
+        ),
+    )
     p.add_argument("-v", "--verbose", action="store_true")
     return p.parse_args()
 
@@ -304,6 +373,7 @@ async def _main() -> int:
         pdf = await reconstruct_pdf(
             args.manifest_cid, ipfs, args.vajra,
             shard_indices=shard_indices,
+            skip_drand_check=args.skip_drand_check,
         )
     except (ManifestVerificationError, ReconstructError) as exc:
         log.error("Reconstruction failed: %s", exc)
