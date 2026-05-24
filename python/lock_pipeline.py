@@ -1,48 +1,52 @@
-"""lock_pipeline.py — Orchestrates the Rust CLI + Shamir SSS + drand pipeline.
+"""lock_pipeline.py — Orchestrates the Rust CLI + Shamir + per-center + drand pipeline.
 
-DOUBLE-LOCK + DRAND BINDING (Layer A)
-─────────────────────────────────────
+THREE LOCKS + ANCHOR
+────────────────────
   Lock 1 — temporal (RSW puzzle):
     K is derived from sequential squaring of g, T_ops times mod N.
     Without p and q (destroyed in step 3), nobody can shortcut this.
     Centers must wait until T=0 and run `vajra solve` to get K.
-
-    ⚠ T_ops is calibrated to admin hardware; this alone gives sequentiality,
-    not wall-clock anchoring. The drand binding below partially closes that.
 
   Lock 2 — organisational (Shamir SSS):
     A random 32-byte `data_key` is split into n shares.
     Any k-of-n exam centers must cooperate to reconstruct data_key.
     data_key wraps the RSW-locked payload (AES-GCM outer layer).
 
-  Drand binding (Layer A):
+  Lock 3 — addressed (per-center X25519):
+    Each Shamir share is hybrid-encrypted to its assigned center's X25519
+    public key (eph-ECDH + HKDF + ChaCha20-Poly1305). IPFS becomes pure
+    transport — only center i can read shard i. Without ≥k center private
+    keys, the manifest + IPFS contents reveal nothing.
+
+  Anchor — drand (Layer A):
     Both AES-GCM layers (inner Rust around PDF, outer Python around
-    locked.json) are computed with the SAME AAD:
-        aad = SHA256("vajra-v1" || target_round_be_u64 || chain_hash_bytes)
-    where target_round is the drand round whose publish_time equals the exam
-    start time. The AAD is reconstructed by reconstruct.py from manifest
-    fields; tampering with target_round in the manifest causes AAD mismatch
-    → AES-GCM auth failure. This is cryptographic round-binding.
+    locked.json) share the same AAD: SHA256("vajra-v1" || target_round ||
+    chain_hash). Tampering with the manifest's drand fields breaks both
+    HMAC verification AND AES-GCM auth. The reconstruct flow ALSO enforces
+    a wall-clock policy gate via multi-relay drand fetch.
 
   All conditions must hold to decrypt:
-    k Shamir shares + RSW key K + correct drand round in manifest.
+    k center privkeys + RSW key K + correct drand round in manifest.
 
 WHAT CENTERS RECEIVE
 ────────────────────
   From IPFS (via manifest):
     puzzle.json      → needed by `vajra solve`
-    payload.bin      → AES-GCM(data_key, locked.json bytes, aad=AAD)
-    shard_NNN.json   → each center's Shamir share of data_key
+    payload.bin      → AES-GCM(data_key, locked.json, aad=AAD)
+    shard_NNN.json   → encrypted to one specific center's pubkey
 
   From manifest:
-    target_round, chain_hash → re-derive AAD identically.
+    centers list: which pubkey owns which shard.
+    drand block: target_round, chain_hash (for AAD re-derivation).
 
   Reconstruction:
-    1. Collect k shard files  → reconstruct data_key
-    2. Verify drand round R has published (clock + relays)  ← Layer A gate
-    3. Re-derive AAD from manifest's target_round + chain_hash
-    4. Fetch payload.bin → AES-GCM-decrypt with data_key+AAD → locked.json
-    5. vajra solve --aad-hex <AAD>  → decrypted exam PDF
+    1. Verify manifest HMAC.
+    2. Verify drand round R has published (clock + relays).
+    3. Re-derive AAD from manifest's target_round + chain_hash.
+    4. k centers each fetch their own shard, decrypt with their privkey.
+    5. Combine k shares via Shamir → data_key.
+    6. AES-GCM(data_key, payload, aad=AAD) → locked.json bytes.
+    7. vajra solve --aad-hex <AAD> → decrypted exam PDF.
 """
 
 import json
@@ -55,6 +59,11 @@ from pathlib import Path
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
+from centers import (
+    CenterRegistration,
+    CentersError,
+    encrypt_share_for_center,
+)
 from config import settings
 from drand_client import derive_aad, publish_time, round_at_or_after
 from shamir import split as shamir_split
@@ -73,7 +82,8 @@ def run_vajra_pipeline(
     exam_start_seconds: int,
     n: int,
     k: int,
-) -> tuple[dict, bytes, list[bytes], str, dict]:
+    centers: list[CenterRegistration],
+) -> tuple[dict, bytes, list[dict], str, dict, list[dict]]:
     """Run the full admin lock pipeline synchronously.
 
     Call this via ``asyncio.to_thread(run_vajra_pipeline, ...)`` from
@@ -82,30 +92,40 @@ def run_vajra_pipeline(
     Args:
         pdf_bytes:           Raw bytes of the uploaded exam PDF.
         exam_start_seconds:  Seconds from now until the exam starts.
-                             Controls RSW puzzle difficulty (T_ops = secs × squarings/sec)
-                             AND determines the drand target_round whose publish time
-                             must be reached before reconstruction is permitted.
-        n:                   Total Shamir shares to produce.
+                             Controls RSW puzzle difficulty AND the drand
+                             target_round whose publish time gates reconstruction.
+        n:                   Total Shamir shares to produce. MUST equal len(centers).
         k:                   Reconstruction threshold (k ≤ n shares needed).
+        centers:             Pre-registered centers, in shard-index order.
+                             Shard i is encrypted to centers[i].pubkey.
 
     Returns:
-        puzzle_params   Parsed contents of puzzle.json (public, upload to IPFS).
-        double_locked   AES-GCM(data_key, locked.json bytes, aad=AAD) — outer payload.
-        shares          n Shamir share bytestrings (one per exam center / IPFS node).
-        nonce_hex       Hex of the 12-byte AES-GCM nonce used in the outer layer.
-        drand_info      Dict with target_round, publish_time, chain_hash, aad_hex.
-                        Caller passes these into the manifest so reconstruct.py
-                        can re-derive the AAD and enforce the policy gate.
+        puzzle_params      Parsed contents of puzzle.json (public, upload to IPFS).
+        double_locked      AES-GCM(data_key, locked.json, aad=AAD) — outer payload.
+        encrypted_shards   n EncryptedShard dicts: each has eph_pubkey_hex,
+                           nonce_hex, ciphertext_hex. Plaintext shares NEVER
+                           leave this function.
+        nonce_hex          Hex of the 12-byte AES-GCM nonce (outer layer).
+        drand_info         Dict with target_round, publish_time, chain_hash, aad_hex.
+        centers_meta       List of {index, id, pubkey} dicts — what the manifest's
+                           `centers` field will look like.
 
     Raises:
         PipelineError: On subprocess failure, binary not found, or timeout.
+        CentersError:  If a center pubkey is malformed (caught at lock time,
+                       not at reconstruct time).
     """
+    if len(centers) != n:
+        raise PipelineError(
+            f"centers list has {len(centers)} entries but n={n}; "
+            f"each shard must map to exactly one registered center"
+        )
+
     vajra = settings.vajra_binary
 
     # ── Compute drand target round + AAD (Layer A: round-binding) ───────────
     # Target round = smallest drand round whose publish_time ≥ exam start time.
-    # The AAD binds both AES-GCM layers to this round; tampering with
-    # target_round in the manifest causes outer (and inner) decrypt to fail.
+    # The AAD binds both AES-GCM layers to this round.
     lock_time_unix    = int(time.time())
     exam_start_unix   = lock_time_unix + exam_start_seconds
     chain_hash        = settings.drand_chain_hash
@@ -135,8 +155,6 @@ def run_vajra_pipeline(
         pdf_path.write_bytes(pdf_bytes)
 
         # ── Step 1: vajra generate ──────────────────────────────────────────
-        # Produces puzzle.json (public) and secret.json (contains p, q — TOP SECRET).
-        # The 2-second benchmark inside `generate` is the bottleneck here.
         print(f"[pipeline] vajra generate  --time {exam_start_seconds}s")
         _run(
             [vajra, "generate",
@@ -149,9 +167,6 @@ def run_vajra_pipeline(
         print(f"[pipeline] puzzle ready  t_ops={puzzle_params.get('t_ops')}")
 
         # ── Step 2: vajra lock (with AAD) ───────────────────────────────────
-        # Uses the φ(N) shortcut to compute K instantly, then encrypts:
-        #   locked.json = { nonce, ciphertext: AES-GCM(SHA256(K), pdf, aad=AAD) }
-        # The AAD ties the inner layer to the drand target round.
         print("[pipeline] vajra lock")
         _run(
             [vajra, "lock",
@@ -166,22 +181,11 @@ def run_vajra_pipeline(
         print(f"[pipeline] locked.json  {len(locked_bytes):,} bytes")
 
         # ── Step 3: Destroy secret (p, q) ────────────────────────────────
-        # After this point, K is unrecoverable until T=0.
-        # The tempdir context manager is a safety net; _secure_delete is the
-        # real defence — it overwrites before unlinking.
-        # NOTE: on SSDs, wear-levelling means overwrites may not hit original
-        # physical cells. For prototype this is acceptable; for production
-        # consider full-disk encryption + key destruction instead.
         print("[pipeline] shredding secret.json ...")
         _secure_delete(secret_path)
         print("[pipeline] secret destroyed")
 
         # ── Step 4: Double-lock with random data_key (same AAD) ───────────
-        # data_key is the Shamir secret: k centers reconstruct it to get here.
-        # The outer layer uses the SAME AAD as the inner — tampering with
-        # target_round breaks both layers, not just one. The HMAC on the
-        # manifest is the first line of defence; AAD is the cryptographic
-        # belt-and-suspenders if HMAC verification is somehow skipped.
         data_key = secrets.token_bytes(32)
         nonce    = secrets.token_bytes(12)
         double_locked = AESGCM(data_key).encrypt(
@@ -190,19 +194,54 @@ def run_vajra_pipeline(
         print(f"[pipeline] double-locked  {len(double_locked):,} bytes (aad={len(aad_bytes)}B)")
 
         # ── Step 5: Shamir-split data_key ─────────────────────────────────
-        # Each share is 33 bytes: [x_coord (1 byte)] + [f_b(x) for each of the
-        # 32 data_key bytes]. Any k shares reconstruct data_key exactly.
         shares = shamir_split(data_key, n, k)
         print(f"[pipeline] Shamir split complete  {n} shares, k={k}")
 
-    # tmpdir is wiped here (including any un-shredded residue on some OSes)
+        # ── Step 6: Encrypt each share to its center's pubkey (Step 2) ────
+        # Plaintext shares exist ONLY in this local variable scope. After the
+        # encrypted_shards list is built, `shares` and `data_key` are no
+        # longer needed by anything downstream.
+        encrypted_shards: list[dict] = []
+        for i, share in enumerate(shares):
+            try:
+                enc = encrypt_share_for_center(share, centers[i].pubkey)
+            except CentersError as exc:
+                # Surface a clear, indexed error
+                raise PipelineError(
+                    f"Failed to encrypt shard {i} for center "
+                    f"{centers[i].id!r}: {exc}"
+                ) from exc
+            encrypted_shards.append(enc.to_dict())
+        print(
+            f"[pipeline] per-center encryption complete: "
+            f"{len(encrypted_shards)} shards, each addressed to one center"
+        )
+
+        # Best-effort: zero out the plaintext shares list. Python doesn't
+        # actually guarantee deletion (immutable bytes), but breaking the
+        # reference helps the GC and signals intent.
+        shares = []
+        del data_key
+
+    # tmpdir is wiped here
     drand_info = {
         "target_round":  target_round,
         "publish_time":  target_pub_unix,
         "chain_hash":    chain_hash,
         "aad_hex":       aad_hex,
     }
-    return puzzle_params, double_locked, shares, nonce.hex(), drand_info
+    centers_meta = [
+        {"index": i, "id": c.id, "pubkey": c.pubkey}
+        for i, c in enumerate(centers)
+    ]
+    return (
+        puzzle_params,
+        double_locked,
+        encrypted_shards,
+        nonce.hex(),
+        drand_info,
+        centers_meta,
+    )
 
 
 # ── Subprocess helper ─────────────────────────────────────────────────────────
@@ -219,6 +258,8 @@ def _run(cmd: list[str], step: str) -> None:
             cmd,
             capture_output=True,
             text=True,
+            encoding="utf-8",       # Rust CLI prints box-drawing + ✓ ⚠ chars;
+            errors="replace",       # Windows default (cp1252) crashes on them.
             timeout=settings.vajra_timeout_secs,
         )
     except FileNotFoundError:
