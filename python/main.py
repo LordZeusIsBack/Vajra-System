@@ -7,13 +7,14 @@ ENDPOINTS
   GET  /                        Health check
 
 AUTOMATED PIPELINE (POST /api/v1/lock)
+  0.  Compute drand target_round + AAD  (Layer A: time-anchor)  [Python, offline]
   1.  vajra generate   → puzzle.json + secret.json       [Rust subprocess]
-  2.  vajra lock       → locked.json (RSW-encrypted PDF)  [Rust subprocess]
+  2.  vajra lock --aad-hex … → locked.json (RSW + AAD)   [Rust subprocess]
   3.  shred            → secret.json destroyed             [secure delete]
-  4.  double-lock      → AES-GCM(data_key, locked.json)   [Python]
+  4.  double-lock      → AES-GCM(data_key, locked.json, aad=AAD)   [Python]
   5.  Shamir split     → n shares of data_key              [Python]
   6.  IPFS upload      → puzzle.json, payload, n shards    [Python → IPFS]
-  7.  Sign manifest    → HMAC-SHA256 over all CIDs         [Python]
+  7.  Sign manifest    → HMAC-SHA256 over CIDs + drand     [Python]
 
 Start with:
   make py-server
@@ -135,26 +136,31 @@ async def node_health() -> list[NodeStatus]:
     "/api/v1/lock",
     response_model=LockResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Lock an exam PDF (fully automated)",
+    summary="Lock an exam PDF (fully automated, drand-anchored)",
     description="""
 Upload an exam PDF. The server runs the full automated pipeline and returns
 an IPFS manifest CID. No further human action is needed.
 
 **Pipeline (zero human intervention after upload)**
 
+0. Compute drand `target_round` whose publish time = lock_time + exam_start_seconds.
+   Derive `aad = SHA256("vajra-v1" || target_round || chain_hash)`.
 1. `vajra generate` — creates RSW puzzle (N, g, T_ops) + admin secret (p, q)
-2. `vajra lock` — computes K via φ(N) shortcut, encrypts PDF: `AES-GCM(SHA256(K), pdf)`
+2. `vajra lock --aad-hex …` — computes K via φ(N) shortcut, encrypts PDF:
+   `AES-GCM(SHA256(K), pdf, aad=AAD)`
 3. `shred secret.json` — p and q destroyed; K is now unrecoverable until T=0
-4. Double-lock — `AES-GCM(data_key, locked.json)` with random 32-byte `data_key`
+4. Double-lock — `AES-GCM(data_key, locked.json, aad=AAD)` with random 32-byte `data_key`
 5. Shamir split — `data_key` split into n shares (any k reconstruct)
 6. IPFS upload — puzzle.json + payload + n shard files (round-robin across nodes)
-7. Sign manifest — HMAC-SHA256 over all CIDs
+7. Sign manifest — HMAC-SHA256 over all CIDs + drand fields
 
 **Center reconstruction (at T=0)**
 
 1. Collect k shard files → reconstruct `data_key`
-2. Fetch `payload_cid` → decrypt with `data_key` → `locked.json`
-3. `vajra solve --puzzle puzzle.json --locked locked.json` → decrypted exam PDF
+2. Verify manifest HMAC; re-derive AAD from manifest's `drand.target_round` + `drand.chain_hash`
+3. Check drand round R has published (local clock + ≥2 relay agreement)
+4. Fetch `payload_cid` → `AES-GCM-decrypt(data_key, …, aad=AAD)` → `locked.json`
+5. `vajra solve --puzzle … --locked … --aad-hex <AAD>` → decrypted exam PDF
 """,
 )
 async def lock_exam(
@@ -214,7 +220,13 @@ async def lock_exam(
         exam_start_seconds, n_val, k_val, len(pdf_bytes),
     )
     try:
-        puzzle_params, double_locked, shares, nonce_hex = await asyncio.to_thread(
+        (
+            puzzle_params,
+            double_locked,
+            shares,
+            nonce_hex,
+            drand_info,           # ← Layer A: target_round, publish_time, chain_hash, aad_hex
+        ) = await asyncio.to_thread(
             run_vajra_pipeline,
             pdf_bytes,
             exam_start_seconds,
@@ -227,6 +239,13 @@ async def lock_exam(
             status.HTTP_500_INTERNAL_SERVER_ERROR,
             f"Rust pipeline error: {exc}",
         )
+
+    log.info(
+        "drand anchor: round=%d  publish_time=%d  chain=%s…",
+        drand_info["target_round"],
+        drand_info["publish_time"],
+        drand_info["chain_hash"][:12],
+    )
 
     # ── Upload to IPFS ────────────────────────────────────────────────────────
     try:
@@ -281,6 +300,11 @@ async def lock_exam(
         payload_cid=payload_cid,
         nonce_hex=nonce_hex,
         shard_cids=shard_cid_entries,
+        drand={
+            "chain_hash":   drand_info["chain_hash"],
+            "target_round": drand_info["target_round"],
+            "publish_time": drand_info["publish_time"],
+        },
         exam_id=exam_id,
     )
 
