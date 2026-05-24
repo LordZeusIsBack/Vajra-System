@@ -13,8 +13,9 @@ AUTOMATED PIPELINE (POST /api/v1/lock)
   3.  shred            → secret.json destroyed             [secure delete]
   4.  double-lock      → AES-GCM(data_key, locked.json, aad=AAD)   [Python]
   5.  Shamir split     → n shares of data_key              [Python]
-  6.  IPFS upload      → puzzle.json, payload, n shards    [Python → IPFS]
-  7.  Sign manifest    → HMAC-SHA256 over CIDs + drand     [Python]
+  6.  Per-center encrypt → each share → X25519+ChaCha20 to one center pubkey  [Python]
+  7.  IPFS upload      → puzzle.json, payload, n encrypted shards  [Python → IPFS]
+  8.  Sign manifest    → HMAC over CIDs + drand + centers   [Python]
 
 Start with:
   make py-server
@@ -32,6 +33,7 @@ import httpx
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile, status
 from pydantic import BaseModel
 
+from centers import CentersError, load_registry
 from config import settings
 from ipfs_client import IPFSClient, IPFSError
 from lock_pipeline import PipelineError, run_vajra_pipeline
@@ -44,7 +46,9 @@ log = logging.getLogger("vajra")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Probe all IPFS nodes at startup; warn but don't abort if any are down."""
+    """Probe all IPFS nodes at startup; warn but don't abort if any are down.
+    Also load the centers registry — fail fast if it's missing or malformed,
+    because the lock pipeline can't run without it."""
     log.info("Checking IPFS nodes ...")
     statuses = await _ipfs.health_check_all()
     for url, ver in statuses.items():
@@ -54,6 +58,24 @@ async def lifespan(app: FastAPI):
             log.warning("  ⚠  %s  unreachable", url)
 
     log.info("Rust binary: %s", settings.vajra_binary)
+
+    # Centers registry: load once at startup. We hold this in module-level
+    # state to avoid re-reading the JSON on every lock request, but reload
+    # is a fresh process restart away if you re-register centers.
+    try:
+        global _registry
+        _registry = load_registry(settings.centers_registry_path)
+        log.info(
+            "Centers registry loaded: %d centers from %s",
+            len(_registry), settings.centers_registry_path,
+        )
+    except CentersError as exc:
+        log.error("Centers registry failed to load: %s", exc)
+        log.error(
+            "The /api/v1/lock endpoint will reject requests until this is fixed."
+        )
+        _registry = []
+
     yield
 
 
@@ -68,6 +90,7 @@ app = FastAPI(
 )
 
 _ipfs = IPFSClient()   # reads settings.ipfs_node_list
+_registry: list = []   # populated at startup from settings.centers_registry_path
 
 
 # ── Response models ───────────────────────────────────────────────────────────
@@ -92,7 +115,11 @@ class NodeStatus(BaseModel):
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _resolve_shamir_params(req_n: int | None, req_k: int | None) -> tuple[int, int]:
-    """Merge per-request overrides with env defaults and validate."""
+    """Merge per-request overrides with env defaults and validate.
+
+    Also enforces that n does not exceed the number of registered centers —
+    we can't encrypt more shards than we have pubkeys for.
+    """
     n = req_n if req_n is not None else settings.default_n
     k = req_k if req_k is not None else settings.default_k
 
@@ -103,6 +130,16 @@ def _resolve_shamir_params(req_n: int | None, req_k: int | None) -> tuple[int, i
         errors.append(f"k must be ≥ {settings.min_threshold} (MIN_THRESHOLD), got {k}")
     if k > n:
         errors.append(f"Threshold k ({k}) cannot exceed total shards n ({n})")
+    if not _registry:
+        errors.append(
+            "Centers registry is empty or failed to load. "
+            f"Generate one: python vajra_keygen.py bulk --n {n} --out-dir ./keys"
+        )
+    elif n > len(_registry):
+        errors.append(
+            f"n ({n}) exceeds registered centers ({len(_registry)}). "
+            f"Register more centers, or request smaller n."
+        )
     if errors:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -136,7 +173,7 @@ async def node_health() -> list[NodeStatus]:
     "/api/v1/lock",
     response_model=LockResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Lock an exam PDF (fully automated, drand-anchored)",
+    summary="Lock an exam PDF (fully automated, per-center + drand-anchored)",
     description="""
 Upload an exam PDF. The server runs the full automated pipeline and returns
 an IPFS manifest CID. No further human action is needed.
@@ -151,16 +188,21 @@ an IPFS manifest CID. No further human action is needed.
 3. `shred secret.json` — p and q destroyed; K is now unrecoverable until T=0
 4. Double-lock — `AES-GCM(data_key, locked.json, aad=AAD)` with random 32-byte `data_key`
 5. Shamir split — `data_key` split into n shares (any k reconstruct)
-6. IPFS upload — puzzle.json + payload + n shard files (round-robin across nodes)
-7. Sign manifest — HMAC-SHA256 over all CIDs + drand fields
+6. **Per-center encryption** — each share is X25519+ChaCha20-Poly1305 encrypted
+   to one center's public key from the centers registry. Plaintext shares
+   never leave the server.
+7. IPFS upload — puzzle.json + payload + n encrypted shard files
+8. Sign manifest — HMAC-SHA256 over all CIDs + centers + drand fields
 
 **Center reconstruction (at T=0)**
 
-1. Collect k shard files → reconstruct `data_key`
-2. Verify manifest HMAC; re-derive AAD from manifest's `drand.target_round` + `drand.chain_hash`
-3. Check drand round R has published (local clock + ≥2 relay agreement)
-4. Fetch `payload_cid` → `AES-GCM-decrypt(data_key, …, aad=AAD)` → `locked.json`
-5. `vajra solve --puzzle … --locked … --aad-hex <AAD>` → decrypted exam PDF
+1. Each of k centers fetches their assigned `shard_cid` and decrypts with
+   their X25519 private key → plaintext Shamir share
+2. k shares combined via Shamir → `data_key`
+3. Verify manifest HMAC; re-derive AAD from `drand.target_round` + `drand.chain_hash`
+4. Check drand round R has published (local clock + ≥2 relay agreement)
+5. `AES-GCM-decrypt(data_key, payload, aad=AAD)` → `locked.json`
+6. `vajra solve --aad-hex <AAD>` → decrypted exam PDF
 """,
 )
 async def lock_exam(
@@ -213,31 +255,45 @@ async def lock_exam(
             "File does not appear to be a PDF (missing %PDF magic bytes)",
         )
 
+    # ── Pick the first n centers from the registry (deterministic) ────────────
+    # For the demo we always use the first n. A real deployment would let the
+    # admin pick specific centers per exam (e.g. only Mumbai region for a
+    # regional test); that's a small API change away.
+    selected_centers = _registry[:n_val]
+
     # ── Run Rust pipeline in thread pool (subprocess calls are blocking) ──────
     # asyncio.to_thread keeps the event loop free while vajra runs.
     log.info(
-        "Starting pipeline: exam_start=%ds  n=%d  k=%d  pdf=%d bytes",
-        exam_start_seconds, n_val, k_val, len(pdf_bytes),
+        "Starting pipeline: exam_start=%ds  n=%d  k=%d  centers=%d  pdf=%d bytes",
+        exam_start_seconds, n_val, k_val, len(selected_centers), len(pdf_bytes),
     )
     try:
         (
             puzzle_params,
             double_locked,
-            shares,
+            encrypted_shards,     # ← Step 2: list[dict] of EncryptedShard
             nonce_hex,
             drand_info,           # ← Layer A: target_round, publish_time, chain_hash, aad_hex
+            centers_meta,         # ← Step 2: list[{index, id, pubkey}] for manifest
         ) = await asyncio.to_thread(
             run_vajra_pipeline,
             pdf_bytes,
             exam_start_seconds,
             n_val,
             k_val,
+            selected_centers,
         )
     except PipelineError as exc:
         log.error("Pipeline failed: %s", exc)
         raise HTTPException(
             status.HTTP_500_INTERNAL_SERVER_ERROR,
             f"Rust pipeline error: {exc}",
+        )
+    except CentersError as exc:
+        log.error("Centers encryption failed: %s", exc)
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            f"Per-center encryption error: {exc}",
         )
 
     log.info(
@@ -265,17 +321,27 @@ async def lock_exam(
         )
         log.info("payload.bin → %s (node 0)  %d bytes", payload_cid, len(double_locked))
 
-        # Shamir shares → round-robin across all configured nodes
+        # Encrypted shards → round-robin across all configured nodes.
+        # Each shard's on-IPFS content is now the EncryptedShard dict from
+        # the pipeline; the plaintext Shamir share never left run_vajra_pipeline.
         shard_cid_entries: list[dict] = []
-        for idx, share in enumerate(shares):
+        for idx, enc_shard in enumerate(encrypted_shards):
             node_idx = idx % _ipfs.node_count
             shard_obj = {
-                "shard_index": idx,          # 0-based position in shard_cids list
-                "x":           share[0],     # Shamir x-coordinate (1 … n)
-                "share_hex":   share[1:].hex(),  # GF(2^8) evaluations of data_key bytes
-                "payload_cid": payload_cid,  # pointer to the outer-locked payload
-                "nonce_hex":   nonce_hex,    # nonce for outer AES-GCM layer
-                "puzzle_cid":  puzzle_cid,   # pointer to puzzle.json
+                "shard_index":    idx,
+                "center_id":      centers_meta[idx]["id"],
+                "center_pubkey":  centers_meta[idx]["pubkey"],
+                # Per-center encryption fields (X25519 ECDH + ChaCha20-Poly1305).
+                # Only the holder of the matching center privkey can decrypt.
+                "eph_pubkey_hex": enc_shard["eph_pubkey_hex"],
+                "nonce_hex":      enc_shard["nonce_hex"],
+                "ciphertext_hex": enc_shard["ciphertext_hex"],
+                # Convenience pointers so a center only needs the shard CID to
+                # know where to fetch the payload and puzzle. These ALSO appear
+                # in the signed manifest — these copies are not load-bearing.
+                "payload_cid":    payload_cid,
+                "outer_nonce_hex": nonce_hex,
+                "puzzle_cid":     puzzle_cid,
             }
             cid = await _ipfs.add_json(
                 shard_obj,
@@ -283,7 +349,10 @@ async def lock_exam(
                 node_index=node_idx,
             )
             shard_cid_entries.append({"cid": cid, "node_index": node_idx})
-            log.info("shard_%03d.json → %s (node %d)", idx, cid, node_idx)
+            log.info(
+                "shard_%03d.json → %s  (node %d, center %s)",
+                idx, cid, node_idx, centers_meta[idx]["id"],
+            )
 
     except (IPFSError, httpx.HTTPError) as exc:
         log.error("IPFS upload failed: %s", exc)
@@ -300,6 +369,7 @@ async def lock_exam(
         payload_cid=payload_cid,
         nonce_hex=nonce_hex,
         shard_cids=shard_cid_entries,
+        centers=centers_meta,
         drand={
             "chain_hash":   drand_info["chain_hash"],
             "target_round": drand_info["target_round"],
