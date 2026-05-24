@@ -133,6 +133,11 @@ def _sample_manifest_kwargs(n: int = 10) -> dict:
             {"cid": f"bafy_shard_{i:03d}", "node_index": i % 3}
             for i in range(n)
         ],
+        "drand": {
+            "chain_hash":   "8990e7a9aaed2ffed73dbd7092123d6f289930540d7651336225dc172e51b2ce",
+            "target_round": 12345,
+            "publish_time": 1595431050 + 30 * 12345,
+        },
         "exam_id": "11111111-2222-3333-4444-555555555555",
     }
 
@@ -140,9 +145,10 @@ def _sample_manifest_kwargs(n: int = 10) -> dict:
 def test_manifest_roundtrip() -> None:
     m = build_and_sign(**_sample_manifest_kwargs())
     assert verify_manifest(m) is True
-    assert m["version"] == "1.1"
+    assert m["version"] == "1.2"
     assert "hmac" in m
     assert len(m["shard_cids"]) == m["n"]
+    assert m["drand"]["target_round"] == 12345
 
 
 def test_manifest_detects_tamper_in_puzzle_cid() -> None:
@@ -157,6 +163,19 @@ def test_manifest_detects_tamper_in_shard_cids() -> None:
     assert verify_manifest(m) is False
 
 
+def test_manifest_detects_tamper_in_drand_round() -> None:
+    """The drand block is HMAC-covered; tampering with target_round must fail."""
+    m = build_and_sign(**_sample_manifest_kwargs())
+    m["drand"]["target_round"] = 99999
+    assert verify_manifest(m) is False
+
+
+def test_manifest_detects_tamper_in_chain_hash() -> None:
+    m = build_and_sign(**_sample_manifest_kwargs())
+    m["drand"]["chain_hash"] = "ff" * 32
+    assert verify_manifest(m) is False
+
+
 def test_manifest_rejects_missing_hmac() -> None:
     m = build_and_sign(**_sample_manifest_kwargs())
     m.pop("hmac")
@@ -168,3 +187,35 @@ def test_manifest_shard_count_mismatch_raises() -> None:
     kwargs["n"] = 11  # n claims 11 but shard_cids has 10
     with pytest.raises(ValueError, match="Expected 11"):
         build_and_sign(**kwargs)
+
+
+def test_manifest_missing_drand_field_raises() -> None:
+    kwargs = _sample_manifest_kwargs()
+    del kwargs["drand"]["chain_hash"]
+    with pytest.raises(ValueError, match="drand dict missing"):
+        build_and_sign(**kwargs)
+
+
+# ── Outer AES-GCM AAD binding (the Layer A cryptographic glue) ────────────────
+
+def test_outer_wrap_aad_mismatch_fails() -> None:
+    """Same key + nonce + plaintext, different AAD → InvalidTag on decrypt.
+    This is the core property Layer A relies on."""
+    from drand_client import derive_aad
+
+    data_key = secrets.token_bytes(32)
+    nonce    = secrets.token_bytes(12)
+    plaintext = b'{"nonce":"deadbeef","ciphertext":"cafebabe"}'
+
+    chain = "8990e7a9aaed2ffed73dbd7092123d6f289930540d7651336225dc172e51b2ce"
+    aad_lock     = derive_aad(target_round=1000, chain_hash_hex=chain)
+    aad_tampered = derive_aad(target_round=1001, chain_hash_hex=chain)  # off by one
+
+    wrapped = AESGCM(data_key).encrypt(nonce, plaintext, associated_data=aad_lock)
+
+    # Right AAD → decrypts
+    assert AESGCM(data_key).decrypt(nonce, wrapped, associated_data=aad_lock) == plaintext
+
+    # Off-by-one round → InvalidTag
+    with pytest.raises(Exception):
+        AESGCM(data_key).decrypt(nonce, wrapped, associated_data=aad_tampered)
