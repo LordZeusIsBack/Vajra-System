@@ -133,6 +133,15 @@ def _sample_manifest_kwargs(n: int = 10) -> dict:
             {"cid": f"bafy_shard_{i:03d}", "node_index": i % 3}
             for i in range(n)
         ],
+        "centers": [
+            {
+                "index": i,
+                "id": f"CENTER_{i:03d}",
+                # Distinct dummy pubkeys (32 bytes each) — different value per index
+                "pubkey": bytes([i % 256]).rjust(32, b"\x00").hex(),
+            }
+            for i in range(n)
+        ],
         "drand": {
             "chain_hash":   "8990e7a9aaed2ffed73dbd7092123d6f289930540d7651336225dc172e51b2ce",
             "target_round": 12345,
@@ -145,9 +154,10 @@ def _sample_manifest_kwargs(n: int = 10) -> dict:
 def test_manifest_roundtrip() -> None:
     m = build_and_sign(**_sample_manifest_kwargs())
     assert verify_manifest(m) is True
-    assert m["version"] == "1.2"
+    assert m["version"] == "1.3"
     assert "hmac" in m
     assert len(m["shard_cids"]) == m["n"]
+    assert len(m["centers"]) == m["n"]
     assert m["drand"]["target_round"] == 12345
 
 
@@ -176,6 +186,20 @@ def test_manifest_detects_tamper_in_chain_hash() -> None:
     assert verify_manifest(m) is False
 
 
+def test_manifest_detects_tamper_in_center_pubkey() -> None:
+    """Step 2: swapping a center pubkey would let an attacker substitute their
+    own. HMAC must catch it."""
+    m = build_and_sign(**_sample_manifest_kwargs())
+    m["centers"][4]["pubkey"] = "de" * 32
+    assert verify_manifest(m) is False
+
+
+def test_manifest_detects_tamper_in_center_id() -> None:
+    m = build_and_sign(**_sample_manifest_kwargs())
+    m["centers"][4]["id"] = "EVIL_CENTER"
+    assert verify_manifest(m) is False
+
+
 def test_manifest_rejects_missing_hmac() -> None:
     m = build_and_sign(**_sample_manifest_kwargs())
     m.pop("hmac")
@@ -186,6 +210,20 @@ def test_manifest_shard_count_mismatch_raises() -> None:
     kwargs = _sample_manifest_kwargs(n=10)
     kwargs["n"] = 11  # n claims 11 but shard_cids has 10
     with pytest.raises(ValueError, match="Expected 11"):
+        build_and_sign(**kwargs)
+
+
+def test_manifest_centers_count_mismatch_raises() -> None:
+    kwargs = _sample_manifest_kwargs(n=10)
+    kwargs["centers"] = kwargs["centers"][:8]  # only 8 of 10
+    with pytest.raises(ValueError, match="Expected 10 centers"):
+        build_and_sign(**kwargs)
+
+
+def test_manifest_centers_index_out_of_order_raises() -> None:
+    kwargs = _sample_manifest_kwargs(n=5)
+    kwargs["centers"][2]["index"] = 99  # should be 2
+    with pytest.raises(ValueError, match="must be in shard order"):
         build_and_sign(**kwargs)
 
 
