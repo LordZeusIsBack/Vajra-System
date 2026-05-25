@@ -22,3 +22,5 @@ ENV/
 rust/target/
 
 keys
+
+demo_run
