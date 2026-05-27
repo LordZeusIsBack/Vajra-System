@@ -1,29 +1,47 @@
-"""steg.py — Forensic watermarking stub (Phase 3 / future work).
+"""steg.py — Forensic watermarking placeholder (Phase 2 production work).
 
-Once the Rust CLI decrypts the exam PDF, this module will:
-  1. Parse the PDF (pypdf / pikepdf)
-  2. Rasterise each page (pdf2image → PIL)
-  3. Embed center metadata (Center ID, Room #, Timestamp) via LSB steganography
-  4. Re-encode the watermarked images back into a print-ready PDF
+THIS MODULE IS INTENTIONALLY UNIMPLEMENTED.
 
-Architecture doc reference: Tier 3 §5.3 — Dynamic Forensic Watermarking
+It marks the integration point for post-T=0 forensic watermarking — the
+counterpart to VAJRA's pre-T=0 cryptographic distribution. Once the
+coordinator has reconstructed an exam PDF at a centre, this module
+(when implemented) would embed:
 
-Usage (future):
-  python steg.py --pdf exam.pdf --center-id CENT42 --room 7 --out stamped.pdf
+  • centre ID
+  • room number
+  • timestamp
+  • candidate session (if applicable)
+
+into the rendered PDF using LSB or frequency-domain steganography
+(via OpenCV / Pillow / pikepdf). A photograph of the printed exam paper
+or screen could then be analysed by the examining authority to identify
+exactly which centre and room the leak originated from.
+
+This makes post-T=0 leak attribution near-instantaneous, shifting the
+operational economics of physical-photo leaks decisively.
+
+See:
+  docs/ARCHITECTURE.md  5.5  Forensic watermarking
+  docs/DEPLOYMENT.md    2.6  Forensic watermarking — scope-extending but important
+
+Estimated implementation effort: ~1 week.
+Status: not started.
 """
+
+from __future__ import annotations
 
 import sys
 
 
 def main() -> None:
-    print("steg.py — Forensic watermarking (not yet implemented)")
+    print("steg.py — Forensic watermarking is not yet implemented.")
     print()
-    print("Planned pipeline:")
-    print("  1. Rasterise PDF pages with pdf2image")
-    print("  2. Embed Center ID + Room + Timestamp via LSB steganography (Pillow)")
-    print("  3. Re-assemble watermarked pages into a new PDF")
+    print("This module is a deliberate placeholder marking the integration")
+    print("point for post-T=0 watermarking. See docs/DEPLOYMENT.md 2.6.")
     print()
-    print("Coming in Phase 3.  See Vajra_Architecture_Detailed.md §5.3.")
+    print("To contribute: open a GitHub issue describing your approach")
+    print("before submitting a PR — the watermarking design needs to be")
+    print("agreed on first.")
     sys.exit(0)
 
 
