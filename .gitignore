@@ -1,26 +1,125 @@
-# Byte-compiled / optimized / DLL files
+# ─── Python ───────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *$py.class
+*.so
+.Python
 
-# Environments
+# Virtual environments
 .venv/
-.env
 venv/
+env/
 ENV/
 
-# uv specific
+# uv
 .python-version
 
-# IDEs
-.vscode/
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+MANIFEST
+
+# Test artefacts
+.pytest_cache/
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.cover
+
+# Type checkers
+.mypy_cache/
+.pyright/
+.ruff_cache/
+
+# ─── Rust ─────────────────────────────────────────────────────────────
+# Don't commit build output — it's huge and reproducible
+target/
+**/*.rs.bk
+Cargo.lock.bak
+
+# IMPORTANT: We DO commit rust/Cargo.lock because vajra is a binary, not a
+# library — pinning exact dep versions is the right behaviour. (Apps yes,
+# libraries no. Cargo's documentation calls this out explicitly.)
+
+# ─── VAJRA-specific secrets and runtime data ──────────────────────────
+# Never commit any of these — they leak the entire security model.
+
+# Environment file (template `env.example` IS committed; .env is NOT)
+.env
+.env.*
+!env.example
+!.env.example
+
+# Centre keypairs — contain X25519 private keys
+keys/
+**/keys/
+*.keypair.json
+CENTER_*.json
+
+# Share files produced during reconstruction — plaintext Shamir shares
+shares/
+share_*.json
+
+# Lock-time artefacts that might be left around if a pipeline crashes
+secret.json
+puzzle.json
+locked.json
+manifest.json
+payload.bin
+shard_*.json
+
+# Demo runs / sandboxes / scratch
+demo/
+demo_run/
+demo_*/
+scratch/
+tmp/
+/tmp/
+*.demo.*
+
+# Asciinema recordings — share via the landing page, don't commit
+*.cast
+
+# Demonstration PDFs — don't ship test inputs in the repo
+*.test.pdf
+exam.pdf
+exam_recovered.pdf
+should_not_*.pdf
+test_out*.pdf
+
+# ─── IDE and editor ───────────────────────────────────────────────────
 .idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
 
-# Jupyter Notebook checkpoints
-.ipynb_checkpoints
+# JetBrains
+*.iml
+.idea_modules/
 
-rust/target/
+# ─── OS clutter ───────────────────────────────────────────────────────
+.directory
+.Trash-*
+ehthumbs.db
+Desktop.ini
 
-keys
+# ─── Logs ─────────────────────────────────────────────────────────────
+*.log
+logs/
+*.log.*
 
-demo_run
+# ─── Local IPFS daemon (if user runs it from repo root) ──────────────
+.ipfs/
+
+# ─── Anything explicitly marked "do not commit" ──────────────────────
+*.secret
+*.private
+DO_NOT_COMMIT/
