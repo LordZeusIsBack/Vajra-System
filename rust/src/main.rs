@@ -6,7 +6,6 @@
 ///   vajra lock      →  Admin encrypts the exam (then destroys the secret)
 ///   vajra solve     →  Center runs the time-lock, decrypts the exam at T=0
 ///   vajra bench     →  Utility: measure this machine's squarings/sec
-
 mod crypto;
 mod puzzle;
 
@@ -126,16 +125,16 @@ fn cmd_generate(time: u64, puzzle_out: PathBuf, secret_out: PathBuf) {
     let (params, secret) = puzzle::generate(time);
 
     // Write public params
-    let puzzle_json = serde_json::to_string_pretty(&params)
-        .expect("Failed to serialize puzzle params");
+    let puzzle_json =
+        serde_json::to_string_pretty(&params).expect("Failed to serialize puzzle params");
     fs::write(&puzzle_out, &puzzle_json)
         .unwrap_or_else(|e| panic!("Cannot write {}: {e}", puzzle_out.display()));
     println!("✓ Puzzle params written to: {}", puzzle_out.display());
     println!("  → Distribute this file to all exam centers and upload to IPFS.\n");
 
     // Write admin secret
-    let secret_json = serde_json::to_string_pretty(&secret)
-        .expect("Failed to serialize admin secret");
+    let secret_json =
+        serde_json::to_string_pretty(&secret).expect("Failed to serialize admin secret");
     fs::write(&secret_out, &secret_json)
         .unwrap_or_else(|e| panic!("Cannot write {}: {e}", secret_out.display()));
     println!("✓ Admin secret written to:  {}", secret_out.display());
@@ -161,15 +160,14 @@ fn cmd_lock(puzzle: PathBuf, secret: PathBuf, input: PathBuf, output: PathBuf, a
     let aad: Vec<u8> = if aad_hex.is_empty() {
         Vec::new()
     } else {
-        hex::decode(&aad_hex)
-            .unwrap_or_else(|e| panic!("Bad --aad-hex value: {e}"))
+        hex::decode(&aad_hex).unwrap_or_else(|e| panic!("Bad --aad-hex value: {e}"))
     };
 
     // Load files
     let params: puzzle::PuzzleParams = load_json(&puzzle, "puzzle params");
     let secret_data: puzzle::AdminSecret = load_json(&secret, "admin secret");
-    let plaintext = fs::read(&input)
-        .unwrap_or_else(|e| panic!("Cannot read {}: {e}", input.display()));
+    let plaintext =
+        fs::read(&input).unwrap_or_else(|e| panic!("Cannot read {}: {e}", input.display()));
 
     println!("Input:  {} ({} bytes)", input.display(), plaintext.len());
     println!("Puzzle: {} squarings required", params.t_ops);
@@ -186,8 +184,8 @@ fn cmd_lock(puzzle: PathBuf, secret: PathBuf, input: PathBuf, output: PathBuf, a
     // Encrypt
     println!("Encrypting with AES-256-GCM ...");
     let locked = crypto::encrypt(&k, &plaintext, &aad);
-    let locked_json = serde_json::to_string_pretty(&locked)
-        .expect("Failed to serialize locked payload");
+    let locked_json =
+        serde_json::to_string_pretty(&locked).expect("Failed to serialize locked payload");
     fs::write(&output, &locked_json)
         .unwrap_or_else(|e| panic!("Cannot write {}: {e}", output.display()));
 
@@ -213,15 +211,17 @@ fn cmd_solve(puzzle: PathBuf, locked: PathBuf, output: PathBuf, aad_hex: String)
     let aad: Vec<u8> = if aad_hex.is_empty() {
         Vec::new()
     } else {
-        hex::decode(&aad_hex)
-            .unwrap_or_else(|e| panic!("Bad --aad-hex value: {e}"))
+        hex::decode(&aad_hex).unwrap_or_else(|e| panic!("Bad --aad-hex value: {e}"))
     };
 
     let params: puzzle::PuzzleParams = load_json(&puzzle, "puzzle params");
     let locked_data: crypto::LockedPayload = load_json(&locked, "locked exam");
 
     if !aad.is_empty() {
-        println!("AAD:    {} bytes (round-binding verified at decrypt)", aad.len());
+        println!(
+            "AAD:    {} bytes (round-binding verified at decrypt)",
+            aad.len()
+        );
     }
 
     // Slow path: sequential squaring
@@ -282,13 +282,28 @@ fn load_json<T: serde::de::DeserializeOwned>(path: &PathBuf, label: &str) -> T {
 fn main() {
     let cli = Cli::parse();
     match cli.command {
-        Commands::Generate { time, puzzle_out, secret_out } => {
+        Commands::Generate {
+            time,
+            puzzle_out,
+            secret_out,
+        } => {
             cmd_generate(time, puzzle_out, secret_out);
         }
-        Commands::Lock { puzzle, secret, input, output, aad_hex } => {
+        Commands::Lock {
+            puzzle,
+            secret,
+            input,
+            output,
+            aad_hex,
+        } => {
             cmd_lock(puzzle, secret, input, output, aad_hex);
         }
-        Commands::Solve { puzzle, locked, output, aad_hex } => {
+        Commands::Solve {
+            puzzle,
+            locked,
+            output,
+            aad_hex,
+        } => {
             cmd_solve(puzzle, locked, output, aad_hex);
         }
         Commands::Bench { bits, duration } => {

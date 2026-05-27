@@ -14,7 +14,6 @@
 ///   sequentiality, not wall-clock anchoring. For production you need an
 ///   external time signal (NTP-rooted release token, drand beacon, VDF tied
 ///   to a public chain). This prototype documents the limitation and stops.
-
 use num_bigint::{BigUint, RandBigInt};
 use num_traits::{One, Zero};
 use rand::RngCore;
@@ -67,10 +66,18 @@ fn is_probable_prime(n: &BigUint, rounds: u32, rng: &mut impl RngCore) -> bool {
     let two = BigUint::from(2u32);
     let three = BigUint::from(3u32);
 
-    if n < &two   { return false; }
-    if n == &two  { return true;  }
-    if n == &three{ return true;  }
-    if n % &two == zero { return false; }
+    if n < &two {
+        return false;
+    }
+    if n == &two {
+        return true;
+    }
+    if n == &three {
+        return true;
+    }
+    if n % &two == zero {
+        return false;
+    }
 
     // Factor out 2s from n-1 so that: n - 1 = 2^r * d
     let n_minus_1 = n - &one;
@@ -106,7 +113,7 @@ pub fn gen_prime(bits: u64, rng: &mut impl RngCore) -> BigUint {
     let top_bit = BigUint::one() << (bits - 1) as usize;
     loop {
         let mut n = rng.gen_biguint(bits);
-        n |= &top_bit;       // Guarantee bit length (set MSB)
+        n |= &top_bit; // Guarantee bit length (set MSB)
         n |= BigUint::one(); // Guarantee odd (set LSB)
 
         if is_probable_prime(&n, 25, rng) {

@@ -3,7 +3,6 @@
 /// Once the time-lock is solved (or bypassed by the admin), the resulting BigUint K
 /// is run through SHA-256 to produce a 256-bit AES key. The exam payload is then
 /// encrypted/decrypted with AES-256-GCM (authenticated, so tampering is detectable).
-
 use aes_gcm::{
     aead::{Aead, KeyInit, Payload},
     Aes256Gcm, Nonce,
@@ -57,8 +56,8 @@ fn derive_aes_key(k: &BigUint) -> [u8; 32] {
 /// Pass `&[]` for empty AAD (equivalent to "no AAD" in the GCM spec).
 pub fn encrypt(k: &BigUint, plaintext: &[u8], aad: &[u8]) -> LockedPayload {
     let key_bytes = derive_aes_key(k);
-    let cipher = Aes256Gcm::new_from_slice(&key_bytes)
-        .expect("Key is always 32 bytes; this cannot fail");
+    let cipher =
+        Aes256Gcm::new_from_slice(&key_bytes).expect("Key is always 32 bytes; this cannot fail");
 
     // Fresh random nonce per encryption (never reuse a nonce with the same key)
     let mut nonce_bytes = [0u8; 12];
@@ -66,7 +65,13 @@ pub fn encrypt(k: &BigUint, plaintext: &[u8], aad: &[u8]) -> LockedPayload {
     let nonce = Nonce::from_slice(&nonce_bytes);
 
     let ciphertext = cipher
-        .encrypt(nonce, Payload { msg: plaintext, aad })
+        .encrypt(
+            nonce,
+            Payload {
+                msg: plaintext,
+                aad,
+            },
+        )
         .expect("AES-GCM encryption failed — this should not happen");
 
     LockedPayload {
@@ -87,22 +92,26 @@ pub fn encrypt(k: &BigUint, plaintext: &[u8], aad: &[u8]) -> LockedPayload {
 ///  - The nonce or ciphertext hex is malformed
 pub fn decrypt(k: &BigUint, locked: &LockedPayload, aad: &[u8]) -> Result<Vec<u8>, String> {
     let key_bytes = derive_aes_key(k);
-    let cipher = Aes256Gcm::new_from_slice(&key_bytes)
-        .expect("Key is always 32 bytes");
+    let cipher = Aes256Gcm::new_from_slice(&key_bytes).expect("Key is always 32 bytes");
 
-    let nonce_bytes = hex::decode(&locked.nonce)
-        .map_err(|e| format!("Bad nonce hex: {e}"))?;
+    let nonce_bytes = hex::decode(&locked.nonce).map_err(|e| format!("Bad nonce hex: {e}"))?;
     if nonce_bytes.len() != 12 {
         return Err(format!("Nonce must be 12 bytes, got {}", nonce_bytes.len()));
     }
 
-    let ciphertext = hex::decode(&locked.ciphertext)
-        .map_err(|e| format!("Bad ciphertext hex: {e}"))?;
+    let ciphertext =
+        hex::decode(&locked.ciphertext).map_err(|e| format!("Bad ciphertext hex: {e}"))?;
 
     let nonce = Nonce::from_slice(&nonce_bytes);
 
     cipher
-        .decrypt(nonce, Payload { msg: ciphertext.as_ref(), aad })
+        .decrypt(
+            nonce,
+            Payload {
+                msg: ciphertext.as_ref(),
+                aad,
+            },
+        )
         .map_err(|_| {
             "Decryption failed — the time-lock key is incorrect, the AAD does \
              not match, or the ciphertext has been tampered with."
