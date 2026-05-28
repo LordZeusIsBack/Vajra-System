@@ -1,0 +1,102 @@
+VAJRA — Zero-Trust Examination Distribution Architecture
+Copyright 2026 Anubhav Sharma
+
+This product includes software developed by Anubhav Sharma
+(https://github.com/LordZeusIsBack) and contributors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this product except in compliance with the License.
+A copy of the License is included in the LICENSE file accompanying
+this distribution, or you may obtain one at:
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+
+=============================================================================
+THIRD-PARTY ATTRIBUTIONS
+=============================================================================
+
+This software builds on open-source cryptographic primitives and libraries
+that retain their own licenses. The licenses below cover code that ships as
+a dependency, not code in this repository.
+
+
+Python dependencies
+-------------------
+
+cryptography (https://github.com/pyca/cryptography)
+    Apache License 2.0 / BSD-3-Clause (dual)
+    Used for AES-256-GCM, X25519, ChaCha20-Poly1305, HKDF-SHA256.
+
+httpx (https://github.com/encode/httpx)
+    BSD-3-Clause
+    Used for async HTTP calls to Kubo (IPFS) and drand relays.
+
+fastapi (https://github.com/tiangolo/fastapi)
+    MIT License
+    Used for the Source Vault HTTP API.
+
+pydantic-settings (https://github.com/pydantic/pydantic-settings)
+    MIT License
+    Used for typed configuration loading.
+
+pytest, pytest-asyncio
+    MIT License
+
+
+Rust dependencies
+-----------------
+
+aes-gcm (https://github.com/RustCrypto/AEADs)
+    Apache License 2.0 / MIT (dual)
+    Used for the inner AES-256-GCM layer wrapping the exam PDF.
+
+num-bigint (https://github.com/rust-num/num-bigint)
+    Apache License 2.0 / MIT (dual)
+    Used for arbitrary-precision integer arithmetic in the RSW time-lock.
+
+sha2 (https://github.com/RustCrypto/hashes)
+    Apache License 2.0 / MIT (dual)
+    Used for SHA-256 key derivation from the RSW puzzle output.
+
+clap, rand, serde, serde_json, hex
+    Apache License 2.0 / MIT (dual)
+    Standard Rust ecosystem dependencies.
+
+
+External services consulted
+---------------------------
+
+drand (https://drand.love)
+    Operated by the League of Entropy (Cloudflare, Protocol Labs, EPFL,
+    and other participants). VAJRA consumes the public drand beacon for
+    wall-clock anchoring; no VAJRA code is included in or executed by drand
+    itself.
+
+IPFS / Kubo (https://github.com/ipfs/kubo)
+    MIT / Apache License 2.0 (dual)
+    Used as the distribution layer. VAJRA interacts with Kubo over its
+    HTTP RPC; no VAJRA code is included in or executed by IPFS itself.
+
+
+=============================================================================
+
+The cryptographic constructions used in VAJRA are based on published academic
+work and standard primitives. Specifically:
+
+  - Time-lock puzzle construction by Rivest, Shamir, and Wagner (MIT, 1996):
+    "Time-lock puzzles and timed-release Crypto."
+
+  - Secret sharing construction by Adi Shamir (1979):
+    "How to share a secret." Communications of the ACM, 22(11), 612–613.
+
+  - X25519 Diffie–Hellman exchange by Daniel J. Bernstein (2006).
+
+  - ChaCha20-Poly1305 AEAD by Daniel J. Bernstein (2008), as specified in
+    RFC 8439.
+
+  - drand distributed randomness beacon (Cloudflare et al., 2018-present).
+
+VAJRA does not claim original cryptographic invention. It composes
+well-understood primitives into an examination-distribution-specific
+protocol. This NOTICE acknowledges that lineage.
