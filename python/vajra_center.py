@@ -57,8 +57,8 @@ from pathlib import Path
 from ipfs_client import IPFSClient, IPFSError
 from manifest import verify as verify_manifest
 from reconstruct import (
-    ReconstructError,
     ManifestVerificationError,
+    ReconstructError,
     fetch_and_decrypt_one_shard,
     load_center_keypair,
     validate_manifest_shape,

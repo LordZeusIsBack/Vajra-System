@@ -48,7 +48,6 @@ from reconstruct import (
     validate_manifest_shape,
 )
 
-
 log = logging.getLogger("vajra-coordinator")
 
 

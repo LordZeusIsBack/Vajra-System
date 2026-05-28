@@ -48,7 +48,6 @@ import httpx
 
 from config import settings
 
-
 # ── Public types ──────────────────────────────────────────────────────────────
 
 

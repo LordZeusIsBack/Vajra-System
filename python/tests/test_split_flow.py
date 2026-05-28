@@ -39,9 +39,8 @@ from drand_client import derive_aad  # noqa: E402
 from manifest import build_and_sign  # noqa: E402
 from reconstruct import ReconstructError  # noqa: E402
 from shamir import split as shamir_split  # noqa: E402
-from vajra_coordinator import _load_share_file, coordinate  # noqa: E402
 from vajra_center import decrypt_my_share  # noqa: E402
-
+from vajra_coordinator import _load_share_file, coordinate  # noqa: E402
 
 # ── A minimal in-memory IPFSClient fake ───────────────────────────────────────
 # We don't import IPFSClient and monkey-patch httpx because it's simpler to
@@ -439,6 +438,7 @@ class TestSplitFlowRoundtrip:
     @pytest.mark.asyncio
     async def test_split_flow_recovers_data_key(self, tmp_path) -> None:
         from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
         from shamir import reconstruct as shamir_reconstruct
 
         state = _build_locked_exam(n=5, k=3)

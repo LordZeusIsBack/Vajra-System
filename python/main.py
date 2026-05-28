@@ -24,8 +24,8 @@ Start with:
 """
 
 import asyncio
-import logging
 import json
+import logging
 from contextlib import asynccontextmanager
 from typing import Annotated
 
@@ -37,7 +37,8 @@ from centers import CentersError, load_registry
 from config import settings
 from ipfs_client import IPFSClient, IPFSError
 from lock_pipeline import PipelineError, run_vajra_pipeline
-from manifest import build_and_sign, verify as verify_manifest
+from manifest import build_and_sign
+from manifest import verify as verify_manifest
 
 log = logging.getLogger("vajra")
 

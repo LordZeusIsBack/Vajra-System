@@ -6,26 +6,51 @@ requires-python = ">=3.11"
 dependencies = [
     "fastapi[standard]>=0.111.0",   # includes uvicorn + python-multipart
     "pydantic-settings>=2.3.0",
-    "cryptography>=42.0.0",         # AES-256-GCM
-    "httpx>=0.27.0",                # async kubo HTTP API calls + drand relay calls
+    "cryptography>=42.0.0",         # AES-256-GCM, X25519, ChaCha20-Poly1305, HKDF
+    "httpx>=0.27.0",                # async Kubo HTTP API + drand relay calls
 ]
 
 [dependency-groups]
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",         # async drand tests
-    "ruff>=0.6",                    # lint + format (configured below)
+    "ruff>=0.6",                    # lint + format
 ]
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+# ─── Ruff ─────────────────────────────────────────────────────────────────────
+# Configuration rationale:
+#  • line-length 100 — 88 (black default) is too aggressive for a codebase that
+#    documents in prose; we'd be wrapping log lines and docstrings purely for
+#    the linter. 100 is the modern compromise.
+#  • `select = ["E", "F", "I"]` — pycodestyle errors, pyflakes, isort.
+#  • E501 (line-too-long) ignored in tests/ because test names and assertion
+#    messages routinely run long; we'd be hurting clarity to satisfy a count.
+#  • `noqa` already used in tests for E402 (import-not-at-top) — that's
+#    deliberate because tests set MANIFEST_HMAC_SECRET before importing
+#    config-dependent modules.
+
 [tool.ruff]
-line-length = 88
+line-length = 100
+target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]
+# E501 in tests is more pain than gain (long assertion messages are useful)
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E501"]
+
+[tool.ruff.lint.isort]
+# Treat these as first-party so ruff groups them correctly with the rest
+# of the project's modules rather than as third-party.
+known-first-party = [
+    "centers", "config", "drand_client", "ipfs_client",
+    "lock_pipeline", "main", "manifest", "reconstruct",
+    "shamir", "vajra_center", "vajra_coordinator", "vajra_keygen",
+]
 
 [tool.pyright]
 pythonVersion = "3.11"

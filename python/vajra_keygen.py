@@ -30,12 +30,10 @@ import sys
 from pathlib import Path
 
 from centers import (
-    CenterRegistration,
     bulk_generate,
     generate_keypair,
     save_registry,
 )
-
 
 # ── Subcommand handlers ──────────────────────────────────────────────────────
 

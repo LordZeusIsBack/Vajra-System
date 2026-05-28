@@ -7,7 +7,6 @@ live here so nothing is scattered around as magic numbers or hardcoded strings.
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-
 # Sentinel value shipped in env.example. Refuse to run if this leaks into prod.
 _PLACEHOLDER_HMAC_SECRET = "change-me-before-any-real-use"
 

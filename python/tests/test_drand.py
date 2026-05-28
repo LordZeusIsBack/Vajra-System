@@ -29,6 +29,7 @@ import pytest
 os.environ.setdefault("MANIFEST_HMAC_SECRET", secrets.token_hex(32))
 
 import httpx  # noqa: E402
+
 from config import settings  # noqa: E402
 from drand_client import (  # noqa: E402
     DrandError,
@@ -38,7 +39,6 @@ from drand_client import (  # noqa: E402
     round_at_or_after,
     verify_round_published,
 )
-
 
 # ── Pure arithmetic ───────────────────────────────────────────────────────────
 

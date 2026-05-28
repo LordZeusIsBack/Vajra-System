@@ -26,9 +26,10 @@ os.environ.setdefault(
     secrets.token_hex(32),  # fresh per test session
 )
 
-from shamir import split as shamir_split, reconstruct as shamir_reconstruct  # noqa: E402
-from manifest import build_and_sign, verify as verify_manifest  # noqa: E402
-
+from manifest import build_and_sign  # noqa: E402
+from manifest import verify as verify_manifest
+from shamir import reconstruct as shamir_reconstruct
+from shamir import split as shamir_split  # noqa: E402
 
 # ── Shamir ────────────────────────────────────────────────────────────────────
 

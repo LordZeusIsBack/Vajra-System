@@ -68,7 +68,6 @@ from config import settings
 from drand_client import derive_aad, publish_time, round_at_or_after
 from shamir import split as shamir_split
 
-
 # ── Public exception ──────────────────────────────────────────────────────────
 
 class PipelineError(RuntimeError):

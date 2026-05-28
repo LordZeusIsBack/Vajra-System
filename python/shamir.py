@@ -28,7 +28,6 @@ RECONSTRUCTION CAVEAT (READ THIS)
 import secrets
 from typing import Sequence
 
-
 # ── GF(2^8) arithmetic ────────────────────────────────────────────────────────
 
 def _gf_mul(a: int, b: int) -> int:

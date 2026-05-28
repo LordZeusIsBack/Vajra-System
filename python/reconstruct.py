@@ -74,7 +74,6 @@ from ipfs_client import IPFSClient, IPFSError
 from manifest import verify as verify_manifest
 from shamir import reconstruct as shamir_reconstruct
 
-
 log = logging.getLogger("reconstruct")
 
 

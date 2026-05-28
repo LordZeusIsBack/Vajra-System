@@ -34,8 +34,8 @@ from centers import (  # noqa: E402
     load_registry,
     save_registry,
 )
-from shamir import reconstruct as shamir_reconstruct, split as shamir_split  # noqa: E402
-
+from shamir import reconstruct as shamir_reconstruct  # noqa: E402
+from shamir import split as shamir_split
 
 # ── Keypair generation ───────────────────────────────────────────────────────
 
