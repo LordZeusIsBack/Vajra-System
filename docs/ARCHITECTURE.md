@@ -49,7 +49,7 @@ timed-release Crypto."** The construction:
    _g_ = *h*² mod _N_ for random _h_ ∈ [2, *N* − 2].
 3. The administrator decides _T_ops_ — how many sequential squarings the
    solver must perform. This is calibrated to the administrator's hardware
-   via a 2-second benchmark (see § 5.1 below for the timing limitation).
+   via a 2-second benchmark (see 5.1 below for the timing limitation).
 4. Using the trapdoor _φ_(_N_) = (_p_ − 1)(_q_ − 1), the administrator
    computes:
    - _e_ = 2^_T_ops_ mod _φ_(_N_) (fast, _O_(log _T_ops_) operations)
@@ -142,7 +142,11 @@ public and immutable.
 
 The administrator computes a 32-byte additional-authenticated-data value:
 
-$$\text{AAD} = \text{SHA-256}(\texttt{"vajra-v1"} \,\|\, R_{\text{u64,BE}} \,\|\, \text{chain\_hash}_{\text{bytes}})$$
+AAD = SHA-256(
+    "vajra-v1" ||
+    R_u64_BE ||
+    chain_hash_bytes
+)
 
 where _R_ is the smallest drand round whose publish time ≥ the configured
 exam start. Both AES-GCM layers — the inner one wrapping `exam.pdf`
@@ -176,7 +180,7 @@ the manifest, ≥ _k_ centre privkeys, and the IPFS payload can run
 they cannot alter _which_ round was used; the policy gate ensures the
 coordinator script will not knowingly decrypt early. A fully
 cryptographic time gate requires timelock encryption against drand
-itself — see [DEPLOYMENT.md § 3.1](DEPLOYMENT.md#31-timelock-encryption).
+itself — see [DEPLOYMENT.md 3.1](DEPLOYMENT.md#31-timelock-encryption).
 
 **Implementation:** [`python/drand_client.py`](../python/drand_client.py).
 Default chain is the League of Entropy mainnet (chain hash
@@ -305,7 +309,7 @@ identity-based encryption with the drand chain pubkey as the master
 public key, the target round number as the identity); it is
 implemented in the `drand-tlock` reference. Integrating it into VAJRA
 is the largest single piece of remaining work and is the highest
-priority production upgrade. See [DEPLOYMENT.md § 3.1](DEPLOYMENT.md#31-timelock-encryption).
+priority production upgrade. See [DEPLOYMENT.md 3.1](DEPLOYMENT.md#31-timelock-encryption).
 
 ### 5.2. Coordinator share visibility
 
@@ -339,7 +343,7 @@ Current defaults:
 
 Centre private keys live as plain JSON files. Production demands
 HSM or TEE custody, attested boot, and key rotation between exams.
-See [DEPLOYMENT.md § 4](DEPLOYMENT.md#4-key-custody).
+See [DEPLOYMENT.md 4](DEPLOYMENT.md#4-key-custody).
 
 ### 5.5. Forensic watermarking
 
