@@ -1,0 +1,97 @@
+cff-version: 1.2.0
+message: "If you reference VAJRA in academic or policy work, please cite it as below."
+title: "VAJRA: A Zero-Trust Cryptographic Architecture for High-Stakes Examination Distribution"
+abstract: >
+  VAJRA is a prototype cryptographic architecture for examination paper
+  distribution that makes pre-exam leaks mathematically impossible. It
+  composes three independent locks — a Rivest-Shamir-Wagner sequential
+  time-lock puzzle, k-of-n Shamir secret sharing across regional centres,
+  and per-centre X25519 hybrid encryption — with a drand distributed
+  randomness beacon as a publicly verifiable wall-clock anchor. The
+  decryption ceremony is decentralized: no single party, including the
+  administrator, holds enough information to recover the exam paper
+  before the configured exam-start moment, and cooperation from a
+  threshold of independent centres is required even then.
+type: software
+authors:
+  - family-names: Sharma
+    given-names: Anubhav
+    email: anubhavsharma5645@gmail.com
+    website: "https://www.linkedin.com/in/anubhav-sharma-ai"
+repository-code: "https://github.com/LordZeusIsBack/Vajra-System"
+url: "https://github.com/LordZeusIsBack/Vajra-System"
+license: Apache-2.0
+version: "0.2.0"
+date-released: "2026-05-28"
+keywords:
+  - cryptography
+  - time-lock-puzzle
+  - secret-sharing
+  - shamir-secret-sharing
+  - threshold-cryptography
+  - drand
+  - ipfs
+  - examination-integrity
+  - zero-trust
+  - rust
+  - python
+references:
+  - type: article
+    title: "Time-lock puzzles and timed-release Crypto"
+    authors:
+      - family-names: Rivest
+        given-names: Ronald L.
+      - family-names: Shamir
+        given-names: Adi
+      - family-names: Wagner
+        given-names: David A.
+    year: 1996
+    institution:
+      name: MIT Laboratory for Computer Science
+  - type: article
+    title: "How to share a secret"
+    authors:
+      - family-names: Shamir
+        given-names: Adi
+    journal: "Communications of the ACM"
+    volume: 22
+    issue: 11
+    start: 612
+    end: 613
+    year: 1979
+    doi: "10.1145/359168.359176"
+  - type: article
+    title: "Curve25519: New Diffie-Hellman speed records"
+    authors:
+      - family-names: Bernstein
+        given-names: Daniel J.
+    conference:
+      name: "Public Key Cryptography (PKC)"
+    year: 2006
+  - type: generic
+    title: "RFC 8439: ChaCha20 and Poly1305 for IETF Protocols"
+    authors:
+      - family-names: Nir
+        given-names: Yoav
+      - family-names: Langley
+        given-names: Adam
+    year: 2018
+    url: "https://www.rfc-editor.org/rfc/rfc8439"
+  - type: generic
+    title: "RFC 9180: Hybrid Public Key Encryption"
+    authors:
+      - family-names: Barnes
+        given-names: Richard
+      - family-names: Bhargavan
+        given-names: Karthikeyan
+      - family-names: Lipp
+        given-names: Benjamin
+      - family-names: Wood
+        given-names: Christopher A.
+    year: 2022
+    url: "https://www.rfc-editor.org/rfc/rfc9180"
+  - type: software
+    title: "drand: distributed randomness beacon"
+    authors:
+      - name: "League of Entropy"
+    url: "https://drand.love"
