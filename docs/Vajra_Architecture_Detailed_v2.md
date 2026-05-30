@@ -90,13 +90,7 @@ Independent of the three locks, VAJRA binds each exam to a specific moment in **
 * **The Beacon:** drand publishes a fresh threshold-BLS-signed random value every 30 seconds. The round number for any future moment is deterministic; the *signature* for that round cannot exist until threshold signers cooperate at that moment.
 * **The Binding:** VAJRA computes:
 
-$$
-\text{AAD}=\text{SHA-256}\left(
-\text{"vajra-v1"} \Vert
-\text{target\_round} \Vert
-\text{chain\_hash}
-\right)
-$$
+    AAD = SHA256("vajra-v1" || target_round || chain_hash)
 
 This value is used as **Additional Authenticated Data** in both AES-GCM encryption layers. Tampering with the manifest's target round changes the AAD, breaking decryption cryptographically.
 * **The Policy Gate:** At reconstruction time, the coordinator queries multiple drand relays and refuses to proceed unless ≥2 relays agree the target round has published.
