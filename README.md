@@ -24,7 +24,7 @@ _Makes pre-exam paper leaks mathematically impossible — not as policy, but as 
 > only when ≥ _k_ independent regional centres cooperate.
 
 > **What this is not.** A deployed product. See
-> [§ Status and honest limitations](#status-and-honest-limitations) before
+> [ Status and honest limitations](#status-and-honest-limitations) before
 > going further. This is a working prototype intended to demonstrate that
 > the cryptographic infrastructure for leak-proof examination distribution
 > exists and is feasible — not to be used in a live examination tomorrow.
@@ -79,7 +79,7 @@ positive and adversarial paths. Audit findings are
 [welcomed via GitHub issues](https://github.com/LordZeusIsBack/Vajra-System/issues).
 
 If you are a **developer who wants to try it**, jump to
-[§ Quick start](#quick-start) below. End-to-end run takes ~5 minutes
+[ Quick start](#quick-start) below. End-to-end run takes ~5 minutes
 once dependencies are in place.
 
 If you are an **examination board considering this seriously**, please
@@ -338,7 +338,7 @@ unlocking real PDFs end-to-end.
    wall-clock time (decryption refuses if drand round R hasn't published),
    but does not enforce a _maximum_. A complete solution requires
    timelock encryption (TLE) against drand itself — see DEPLOYMENT.md
-   §3.1.
+   3.1.
 
 3. **Centre private key custody is left to the operator.** This prototype
    stores private keys as plain JSON files. Production requires HSM
@@ -389,7 +389,7 @@ welcome on documentation, test coverage, and code clarity. Substantial
 architectural changes should be discussed in an issue first.
 
 Anybody contributing code agrees to license their contribution under
-Apache 2.0 as well (per § 5 of the LICENSE).
+Apache 2.0 as well (per 5 of the LICENSE).
 
 ## Citation
 
