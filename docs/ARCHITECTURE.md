@@ -5,7 +5,7 @@ _Detailed technical specification — current as of manifest v1.3._
 This document is the canonical technical reference. It describes the system
 as currently implemented in this repository. For the original design
 document (manifest v1.0, pre-drand, pre-per-centre), see
-[Vajra_Architecture_Detailed v1.md](Vajra_Architecture_Detailed_v1); that
+[Vajra_Architecture_Detailed v1.md](Vajra_Architecture_Detailed_v1.md); that
 document is preserved for historical context but does not match the
 current implementation.
 
