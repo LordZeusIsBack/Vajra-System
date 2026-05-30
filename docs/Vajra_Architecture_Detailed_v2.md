@@ -51,7 +51,7 @@ The innermost lock is the **Rivest-Shamir-Wagner (RSW)** time-lock puzzle. This 
 4.  **The Lock:** The admin discards $p, q,$ and $\phi(N)$. The only way to find $K$ now is to start with $g$ and square it $T_{ops}$ times.
 5.  **The Inner Encryption:** The exam PDF is encrypted under AES-256-GCM keyed by SHA-256($K$). This produces `locked.json`.
 
-> ⚠ **Timing nuance.** $T_{ops}$ is calibrated to the *administrator's* hardware via a 2-second benchmark. Centres with faster CPUs finish before T=0; slower ones finish after. The drand time anchor (§4) closes the lower bound by refusing reconstruction before the beacon publishes. Closing the upper bound — making decryption *cryptographically* impossible before T=0 — requires full timelock encryption against drand; see [DEPLOYMENT.md §2.2](DEPLOYMENT.md).
+> ⚠ **Timing nuance.** $T_{ops}$ is calibrated to the *administrator's* hardware via a 2-second benchmark. Centres with faster CPUs finish before T=0; slower ones finish after. The drand time anchor (4) closes the lower bound by refusing reconstruction before the beacon publishes. Closing the upper bound — making decryption *cryptographically* impossible before T=0 — requires full timelock encryption against drand; see [DEPLOYMENT.md 2.2](DEPLOYMENT.md).
 
 ### 3.2. The Consensus Lock (Shamir's Secret Sharing)
 After the inner encryption, a fresh random 32-byte `data_key` wraps `locked.json` in an outer AES-256-GCM layer. The `data_key` itself is then split using **Shamir's Secret Sharing** over GF(2⁸):
@@ -176,7 +176,7 @@ Once the PDF is decrypted for display or printing, a **Sentinel layer** would ap
 * **The Payload:** The watermark embeds the **Centre ID, Room Number, and Timestamp** into the background of the PDF.
 * **Leak Detection:** If a proctor or student photographs the printed paper and shares it, a simple scan of the image reveals exactly which centre and room the leak originated from.
 
-> 📋 **Status:** Specified, not yet implemented. The placeholder lives at `python/steg.py`. See [DEPLOYMENT.md §2.6](DEPLOYMENT.md) for the implementation plan.
+> 📋 **Status:** Specified, not yet implemented. The placeholder lives at `python/steg.py`. See [DEPLOYMENT.md 2.6](DEPLOYMENT.md) for the implementation plan.
 
 ---
 
@@ -199,7 +199,7 @@ Once the PDF is decrypted for display or printing, a **Sentinel layer** would ap
 
 ### Phase 1: Hardened Time Anchor (Highest Priority)
 * **Timelock Encryption (TLE)** against drand using Boneh-Franklin identity-based encryption with the drand chain pubkey as master public key. This closes the upper-bound timing gap — decryption becomes *mathematically* impossible before the target drand round publishes, not just policy-refused.
-* Estimated effort: 1-2 weeks integration + 1 week testing. See [DEPLOYMENT.md §2.2](DEPLOYMENT.md).
+* Estimated effort: 1-2 weeks integration + 1 week testing. See [DEPLOYMENT.md 2.2](DEPLOYMENT.md).
 
 ### Phase 2: Production Cryptography
 * **Migrate to 2048-bit RSA primes** (from current 1024-bit) for the RSW puzzle. The current parameters are prototype-grade; production requires ≥2048-bit moduli.
@@ -212,7 +212,7 @@ Once the PDF is decrypted for display or printing, a **Sentinel layer** would ap
 * **Estimated cost** at national scale (~5,000 centres): ₹2.25 crore in YubiKey hardware — a rounding error against the cost of one cancelled exam cycle.
 
 ### Phase 4: Forensic Watermarking
-* Implementation of the LSB/frequency-domain watermarking described in §6.4.
+* Implementation of the LSB/frequency-domain watermarking described in 6.4.
 * Integration point already exists at `python/steg.py`.
 * Estimated effort: ~1 week.
 
