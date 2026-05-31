@@ -402,8 +402,8 @@ If you reference VAJRA in academic or policy work, please cite as:
   title  = {VAJRA: A Zero-Trust Cryptographic Architecture for High-Stakes
             Examination Distribution},
   year   = {2026},
-  url    = {https://github.com/LordZeusIsBack/Vajra-System},
-  note   = {Prototype}
+  url    = {https://vajra-system.vercel.app},
+  note   = {Prototype. Source code available at https://github.com/LordZeusIsBack/Vajra-System}
 }
 ```
 
