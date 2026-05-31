@@ -246,10 +246,10 @@ vajra/
 ├── .gitignore
 │
 ├── docs/
-│   ├── ARCHITECTURE.md         # detailed system architecture
-│   ├── DEPLOYMENT.md           # gap analysis for production deployment
+│   ├── ARCHITECTURE.md                             # detailed system architecture
+│   ├── DEPLOYMENT.md                               # gap analysis for production deployment
 │   ├── Vajra_Architecture_Detailed_v1.md           # first version of the design document
-│   └── Vajra_Architecture_Detailed.md   # second and current version of the design document
+│   └── Vajra_Architecture_Detailed_v2.md           # second and current version of the design document
 │
 ├── python/                     # orchestration, IPFS, drand, per-centre
 │   ├── pyproject.toml
