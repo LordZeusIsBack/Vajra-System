@@ -27,7 +27,7 @@ VAJRA does _not_ defend against:
 
 - An adversary who compromises ≥ _k_ centre private keys simultaneously
   (this is the threshold security boundary by design).
-- An adversary who controls the printer or screen at a centre after T=0
+- An adversary who controls the secure terminal or screen at a centre after T=0
   (this is outside the cryptographic system; addressed by forensic
   watermarking, which is not yet implemented).
 - An adversary who can forge the manifest's HMAC (i.e. who possesses
@@ -143,9 +143,9 @@ public and immutable.
 The administrator computes a 32-byte additional-authenticated-data value:
 
 AAD = SHA-256(
-    "vajra-v1" ||
-    R_u64_BE ||
-    chain_hash_bytes
+"vajra-v1" ||
+R_u64_BE ||
+chain_hash_bytes
 )
 
 where _R_ is the smallest drand round whose publish time ≥ the configured
@@ -348,8 +348,7 @@ See [DEPLOYMENT.md 4](DEPLOYMENT.md#4-key-custody).
 ### 5.5. Forensic watermarking
 
 Once decrypted, the exam paper is plaintext at each centre. A
-malicious proctor or candidate could photograph the screen or
-printout. The original architecture document specified
+malicious proctor or candidate could photograph the screen. The original architecture document specified
 LSB/frequency-domain watermarking that embeds centre ID, room
 number, and timestamp into the rendered PDF; this would make any
 leaked photograph instantly traceable to its source.
