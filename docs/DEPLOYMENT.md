@@ -1,7 +1,7 @@
 # Deployment Considerations
 
-*A gap analysis between the current VAJRA prototype and what would be
-required for use in a live high-stakes examination.*
+_A gap analysis between the current VAJRA prototype and what would be
+required for use in a live high-stakes examination._
 
 This document is explicitly aspirational. None of what follows has been
 done. It is included because (a) examination boards considering this
@@ -24,7 +24,7 @@ the cryptographic infrastructure to remove that dependency exists?
 VAJRA's claim is that the answer should be: **only where cryptography
 genuinely cannot help.** The decryption of an exam paper before T=0 is
 a problem cryptography can address completely. The integrity of the
-exam *centre* during the exam — proctoring, identification, copying —
+exam _centre_ during the exam — proctoring, identification, copying —
 is largely outside cryptography's reach.
 
 Production deployment of VAJRA would therefore mean:
@@ -39,19 +39,19 @@ Production deployment of VAJRA would therefore mean:
 
 The remainder of this document expands each of these.
 
-## 2. What the prototype does *not* yet do
+## 2. What the prototype does _not_ yet do
 
 A complete list of known gaps. Each is sized and prioritised.
 
 ### 2.1. Cryptographic parameter sizes — **must fix**
 
-| Parameter | Prototype | Production target |
-|-----------|-----------|-------------------|
-| RSW prime size | 512 bits each | ≥ 1024 bits each |
-| RSW modulus *N* | 1024 bits | ≥ 2048 bits |
-| Number of cooperating centres *k* | demo-only (3-of-5) | 30-of-50 or higher, per regional layout |
+| Parameter                         | Prototype          | Production target                       |
+| --------------------------------- | ------------------ | --------------------------------------- |
+| RSW prime size                    | 512 bits each      | ≥ 1024 bits each                        |
+| RSW modulus _N_                   | 1024 bits          | ≥ 2048 bits                             |
+| Number of cooperating centres _k_ | demo-only (3-of-5) | 30-of-50 or higher, per regional layout |
 
-1024-bit *N* is acceptable for a prototype. It is *not* acceptable for
+1024-bit _N_ is acceptable for a prototype. It is _not_ acceptable for
 a national-scale exam — it is within the range of nation-state factoring
 capability and would not be defensible if challenged. 2048-bit is the
 minimum starting point; current cryptographic recommendation is 3072-bit
@@ -74,14 +74,14 @@ The current drand integration uses the beacon for two purposes:
   published.
 
 But the policy gate is, literally, a script. A determined attacker with
-the manifest, *k* centre privkeys, and `puzzle.json` can run `vajra
+the manifest, _k_ centre privkeys, and `puzzle.json` can run `vajra
 solve` directly, bypass the gate, and decrypt early.
 
 The fix is **timelock encryption (TLE)**: a Boneh–Franklin
 identity-based encryption scheme using the drand chain's BLS public key
 as the master public key, and a future round number as the encryption
-identity. The decryption key for round *R* is exactly the drand
-signature at round *R*, which is mathematically impossible to compute
+identity. The decryption key for round _R_ is exactly the drand
+signature at round _R_, which is mathematically impossible to compute
 before the beacon emits it. This construction is implemented in the
 reference `drand-tlock` library (Go) and has Rust and Python ports.
 
@@ -124,7 +124,7 @@ systems.
 
 ### 2.4. Secure multi-party Shamir combine — **medium effort, high impact**
 
-At the moment of reconstruction, the coordinator process holds all *k*
+At the moment of reconstruction, the coordinator process holds all _k_
 plaintext Shamir shares simultaneously. An attacker who compromises the
 coordinator at that instant recovers `data_key` and can decrypt the
 payload (given that the time-lock has separately resolved).
@@ -179,23 +179,19 @@ harder problem and requires policy work, not code.
 ### 2.6. Forensic watermarking — **scope-extending but important**
 
 Once VAJRA decrypts the exam paper at a centre, the paper is plaintext.
-A proctor or candidate could photograph the screen or printed copy and
-distribute the image. VAJRA's claim is about pre-T=0 leaks, not
+A proctor or candidate could photograph the secure terminal screen and distribute the image. VAJRA's claim is about pre-T=0 leaks, not
 post-T=0 — but a complete examination-integrity story should address
 both.
 
 The original architecture document specifies LSB / frequency-domain
 steganography embedding centre ID, room number, and timestamp into the
-rendered PDF. A photographed page would reveal, by simple decoding
-of the embedded watermark, exactly which centre and room the photo
-originated from. This makes attribution near-instant and shifts the
+rendered PDF. A photographed page would reveal, by simple decoding of the embedded watermark, exactly which centre and room the photo originated from. This makes attribution near-instant and shifts the
 operational economics of post-T=0 leaks dramatically.
 
 **Effort:** ~1 week. Open-source implementations of robust image
 watermarking exist (e.g. `pdf-watermark`, OpenCV's frequency-domain
 techniques). The integration point is between `coordinator combine`
-finishing and the PDF being displayed/printed — `python/steg.py`
-already marks the location.
+finishing and the exam being displayed on a secure CBT terminal — `python/steg.py` already marks the location.
 
 ### 2.7. Registry signing — **easy, should fix**
 
@@ -203,7 +199,7 @@ already marks the location.
 their X25519 pubkeys. If an attacker can replace a centre's pubkey
 before lock-time (e.g. by tampering with the file on the
 administrator's filesystem), they can have that centre's shard
-encrypted to *their own* key. They then decrypt that shard at T=0
+encrypted to _their own_ key. They then decrypt that shard at T=0
 without needing the legitimate centre's cooperation.
 
 The fix is to sign the registry with an offline admin key (Ed25519,
@@ -252,7 +248,7 @@ The prototype's time-lock is calibrated to the administrator's hardware
 via a 2-second benchmark. For a production exam, the squaring rate
 across the fleet of regional centres must be characterised carefully:
 
-- **Worst-case CPU** in the fleet defines the minimum *T_ops* (so
+- **Worst-case CPU** in the fleet defines the minimum _T_ops_ (so
   that the slowest centre still finishes by T=0).
 - **Best-case CPU** in the fleet defines the maximum acceptable
   earliness (the fastest centre will finish first; the gap between
@@ -335,7 +331,7 @@ recording, the CID, and the HSM access log all jointly form an audit
 trail.
 
 The RSW-puzzle generation in `vajra generate` should ideally happen
-inside an attested enclave so the prime factors (*p*, *q*) cannot be
+inside an attested enclave so the prime factors (_p_, _q_) cannot be
 exfiltrated even by a compromised administrator workstation. This is
 less critical than the centre-side key custody (because the
 administrator's secrets are destroyed immediately after lock) but
@@ -356,16 +352,16 @@ centre's key after one exam does not affect any subsequent exam.
 Highly approximate, for context only. Assumes a 5,000-centre national
 fleet.
 
-| Item | Capex (one-time) | Opex (per exam) |
-|------|------------------|-----------------|
-| YubiKeys, 5,000 × ₹4,500 | ₹2.25 crore | — |
-| Centre training, 5,000 centres × 1 hour | — | ₹50 lakh |
-| HSM appliance (admin signing) | ₹15 lakh | ₹2 lakh maintenance |
-| Pinning service (managed IPFS, multi-region) | — | ₹3-5 lakh |
-| Third-party cryptographic audit | — | ₹15-30 lakh per major exam |
-| TLE integration + ongoing engineering | ₹40-60 lakh | ₹20 lakh / year |
-| Forensic watermarking implementation | ₹15 lakh | — |
-| **Approximate totals** | **₹3-4 crore** | **₹20-30 lakh / exam** |
+| Item                                         | Capex (one-time) | Opex (per exam)            |
+| -------------------------------------------- | ---------------- | -------------------------- |
+| YubiKeys, 5,000 × ₹4,500                     | ₹2.25 crore      | —                          |
+| Centre training, 5,000 centres × 1 hour      | —                | ₹50 lakh                   |
+| HSM appliance (admin signing)                | ₹15 lakh         | ₹2 lakh maintenance        |
+| Pinning service (managed IPFS, multi-region) | —                | ₹3-5 lakh                  |
+| Third-party cryptographic audit              | —                | ₹15-30 lakh per major exam |
+| TLE integration + ongoing engineering        | ₹40-60 lakh      | ₹20 lakh / year            |
+| Forensic watermarking implementation         | ₹15 lakh         | —                          |
+| **Approximate totals**                       | **₹3-4 crore**   | **₹20-30 lakh / exam**     |
 
 For comparison, the operational cost of a major paper leak — running
 a re-examination cycle for 24 lakh candidates — has been estimated
@@ -380,17 +376,17 @@ cheaper than a single avoided leak.
 
 What goes wrong, and what happens when it does:
 
-| Failure | Likelihood | Severity | Mitigation |
-|---------|------------|----------|------------|
-| One centre's YubiKey is lost or fails | Low | Low (drop to *k*+1 of *n*−1) | Maintain *n* ≫ *k* margin. |
-| One IPFS node goes offline mid-exam | Medium | Low (other nodes serve the content) | Multi-provider pinning. |
-| Drand chain has an outage at T=0 | Very low | High (cannot decrypt) | Fall back to RSW-only mode if drand is unreachable for > N minutes (operational policy). |
-| Bug in cryptographic code | Low if audited | Catastrophic | Independent audit; bug-bounty programme. |
-| Centre staff under coercion at T=0 | Medium (threshold protects against few; not against many) | Depends on *k* | Set *k* high. Make threshold breach require coordinated effort across diverse jurisdictions/operators. |
-| The administrator's signing HSM is compromised | Very low | Catastrophic (forged manifests) | Two-person HSM access; HSM hardware tamper evidence. |
-| The drand chain's threshold signers are compromised | Astronomically low | Catastrophic | Diversify: use multiple drand chains if available; consider TLE against more than one chain. |
+| Failure                                             | Likelihood                                                | Severity                            | Mitigation                                                                                             |
+| --------------------------------------------------- | --------------------------------------------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| One centre's YubiKey is lost or fails               | Low                                                       | Low (drop to _k_+1 of *n*−1)        | Maintain _n_ ≫ _k_ margin.                                                                             |
+| One IPFS node goes offline mid-exam                 | Medium                                                    | Low (other nodes serve the content) | Multi-provider pinning.                                                                                |
+| Drand chain has an outage at T=0                    | Very low                                                  | High (cannot decrypt)               | Fall back to RSW-only mode if drand is unreachable for > N minutes (operational policy).               |
+| Bug in cryptographic code                           | Low if audited                                            | Catastrophic                        | Independent audit; bug-bounty programme.                                                               |
+| Centre staff under coercion at T=0                  | Medium (threshold protects against few; not against many) | Depends on _k_                      | Set _k_ high. Make threshold breach require coordinated effort across diverse jurisdictions/operators. |
+| The administrator's signing HSM is compromised      | Very low                                                  | Catastrophic (forged manifests)     | Two-person HSM access; HSM hardware tamper evidence.                                                   |
+| The drand chain's threshold signers are compromised | Astronomically low                                        | Catastrophic                        | Diversify: use multiple drand chains if available; consider TLE against more than one chain.           |
 
-Several of these collapse to the same answer: **set *k* and *n*
+Several of these collapse to the same answer: **set _k_ and _n_
 generously, use defense in depth, and maintain operational
 diversity.** These are exam-board policy choices, not cryptographic
 ones, and they should be made deliberately rather than defaulted.
@@ -400,7 +396,7 @@ ones, and they should be made deliberately rather than defaulted.
 Honest list of open questions:
 
 1. **At-scale performance.** The prototype has been tested with
-   *n* = 10 centres and small PDFs. Behaviour at *n* = 5000 is
+   _n_ = 10 centres and small PDFs. Behaviour at _n_ = 5000 is
    extrapolation, not measurement.
 2. **Network behaviour during national-scale concurrent reconstruction.**
    When 5000 centres simultaneously fetch from IPFS at T=0, what
