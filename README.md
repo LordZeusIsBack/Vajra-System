@@ -364,9 +364,7 @@ unlocking real PDFs end-to-end.
    holding the signing key.
 
 7. **Watermarking and forensic traceability** (described in the original
-   architecture document as "Tier 3") are not implemented. Once the PDF
-   is decrypted at a centre, photographs of physical printouts are
-   still possible. Watermarking would make a leaked photograph
+   architecture document as "Tier 3") are not implemented. Once the PDF is decrypted at a centre, photographs of the screen are still possible. Watermarking would make a leaked photograph
    instantly traceable to a specific centre/room/time.
 
 8. **The "centers.json" registry is integrity-critical and not currently
