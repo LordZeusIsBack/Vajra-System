@@ -8,6 +8,7 @@ dependencies = [
     "pydantic-settings>=2.3.0",
     "cryptography>=42.0.0",         # AES-256-GCM, X25519, ChaCha20-Poly1305, HKDF
     "httpx>=0.27.0",                # async Kubo HTTP API + drand relay calls
+    "psutil>=7.2.2",
 ]
 
 [dependency-groups]
