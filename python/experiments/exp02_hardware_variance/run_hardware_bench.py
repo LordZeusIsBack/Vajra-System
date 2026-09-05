@@ -1,19 +1,26 @@
 import csv
 import json
 import os.path
+from pathlib import Path
 import platform
 import time
 import subprocess
 
 import psutil
 
-RUST_BINARY = r'..\..\..\rust\target\release\vajra.exe'
-PUZZLE_FILE = 'puzzle.json'
+SCRIPT_DIR = Path(__file__).resolve().parent
+REPO_ROOT = SCRIPT_DIR.parents[2]
+
+BINARY_NAME = 'vajra.exe' if platform.system() == 'Windows' else 'vajra'
+RUST_BINARY = str(REPO_ROOT / 'rust' / 'target' / 'release' / BINARY_NAME)
+
+PUZZLE_FILE = SCRIPT_DIR / 'puzzle.json'
+CSV_FILE = SCRIPT_DIR / 'raw_results.csv'
 
 
 def solve_puzzle(t_ops):
     subprocess.run(
-        ['../../../rust/target/release/vajra.exe', '--solve', str(t_ops)],
+        [RUST_BINARY, '--solve', str(t_ops)],
         capture_output=True
     )
 
@@ -34,8 +41,13 @@ def get_system_info():
 
 
 def run_hardware_bench(repetition=5):
-    if not os.path.exists(PUZZLE_FILE):
+    if not PUZZLE_FILE.exists():
         print(f'Error: {PUZZLE_FILE} not found. Please copy the reference puzzle to this directory.')
+        return []
+
+    if not os.path.exists(RUST_BINARY):
+        print(f'Error: Compiled binary not found at {RUST_BINARY}')
+        print("Build it with: cargo build --release (inside the rust/ directory)")
         return []
 
     sys_info = get_system_info()
@@ -63,18 +75,17 @@ def run_hardware_bench(repetition=5):
     return results
 
 if __name__ == '__main__':
-    print(f"Running hardware benchmark on {platform.node()}...")
+    print(f"Running hardware benchmark on {platform.node()} ({platform.system()})...")
 
     experiment_data = run_hardware_bench(10)
 
     if experiment_data:
-        csv_file = 'raw_results.csv'
-        file_exists = os.path.exists(csv_file)
+        file_exists = CSV_FILE.exists()
 
-        with open(csv_file, 'a', newline='') as fp:
+        with open(CSV_FILE, 'a', newline='') as fp:
             writer = csv.DictWriter(fp, fieldnames=experiment_data[0].keys())
             if not file_exists:
                 writer.writeheader()
             writer.writerows(experiment_data)
 
-        print(f"Recorded {len(experiment_data)} runs to {csv_file}")
+        print(f"Recorded {len(experiment_data)} runs to {CSV_FILE}")
