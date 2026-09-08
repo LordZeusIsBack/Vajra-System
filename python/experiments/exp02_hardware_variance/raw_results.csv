@@ -29,3 +29,13 @@ FRONTERA,Windows 11,"AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD",7.35,rus
 FRONTERA,Windows 11,"AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD",7.35,rustc 1.98.1 (48a229cea 2026-09-01),29463600,8,60.8314,484348.63
 FRONTERA,Windows 11,"AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD",7.35,rustc 1.98.1 (48a229cea 2026-09-01),29463600,9,61.7926,476814.31
 FRONTERA,Windows 11,"AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD",7.35,rustc 1.98.1 (48a229cea 2026-09-01),29463600,10,60.2872,488720.58
+shiva,Windows 10,"Intel64 Family 6 Model 78 Stepping 3, GenuineIntel",19.83,rustc 1.98.1 (48a229cea 2026-09-01),29463600,1,100.8557,292136.23
+shiva,Windows 10,"Intel64 Family 6 Model 78 Stepping 3, GenuineIntel",19.83,rustc 1.98.1 (48a229cea 2026-09-01),29463600,2,87.4821,336795.82
+shiva,Windows 10,"Intel64 Family 6 Model 78 Stepping 3, GenuineIntel",19.83,rustc 1.98.1 (48a229cea 2026-09-01),29463600,3,82.8994,355413.73
+shiva,Windows 10,"Intel64 Family 6 Model 78 Stepping 3, GenuineIntel",19.83,rustc 1.98.1 (48a229cea 2026-09-01),29463600,4,79.2228,371908.24
+shiva,Windows 10,"Intel64 Family 6 Model 78 Stepping 3, GenuineIntel",19.83,rustc 1.98.1 (48a229cea 2026-09-01),29463600,5,80.6623,365271.0
+shiva,Windows 10,"Intel64 Family 6 Model 78 Stepping 3, GenuineIntel",19.83,rustc 1.98.1 (48a229cea 2026-09-01),29463600,6,78.7264,374253.24
+shiva,Windows 10,"Intel64 Family 6 Model 78 Stepping 3, GenuineIntel",19.83,rustc 1.98.1 (48a229cea 2026-09-01),29463600,7,70.9423,415317.99
+shiva,Windows 10,"Intel64 Family 6 Model 78 Stepping 3, GenuineIntel",19.83,rustc 1.98.1 (48a229cea 2026-09-01),29463600,8,80.7813,364733.03
+shiva,Windows 10,"Intel64 Family 6 Model 78 Stepping 3, GenuineIntel",19.83,rustc 1.98.1 (48a229cea 2026-09-01),29463600,9,80.0332,368142.33
+shiva,Windows 10,"Intel64 Family 6 Model 78 Stepping 3, GenuineIntel",19.83,rustc 1.98.1 (48a229cea 2026-09-01),29463600,10,76.9178,383052.97
