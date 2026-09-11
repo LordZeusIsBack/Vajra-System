@@ -10,13 +10,13 @@ Reconstruction will fail for any number of shares from 1 to k-1, and will succee
 Number of shares used for reconstruction.
 
 ## Dependent Variables
-- Reconstruction success (Boolean)[cite: 1]
-- Reconstructed key matches original (Boolean)[cite: 1]
-- Reconstruction time[cite: 1]
+- Reconstruction success (Boolean)
+- Reconstructed key matches original (Boolean)
+- Reconstruction time
 
 ## Controlled Variables
-- n (Total shares generated) = 10[cite: 1]
-- Tested thresholds (k) = 3, 5, 8, 10[cite: 1]
+- n (Total shares generated) = 10
+- Tested thresholds (k) = 3, 5, 8, 10
 
 ## Procedure
 1. Generate a dummy key.
