@@ -39,3 +39,13 @@ shiva,Windows 10,"Intel64 Family 6 Model 78 Stepping 3, GenuineIntel",19.83,rust
 shiva,Windows 10,"Intel64 Family 6 Model 78 Stepping 3, GenuineIntel",19.83,rustc 1.98.1 (48a229cea 2026-09-01),29463600,8,80.7813,364733.03
 shiva,Windows 10,"Intel64 Family 6 Model 78 Stepping 3, GenuineIntel",19.83,rustc 1.98.1 (48a229cea 2026-09-01),29463600,9,80.0332,368142.33
 shiva,Windows 10,"Intel64 Family 6 Model 78 Stepping 3, GenuineIntel",19.83,rustc 1.98.1 (48a229cea 2026-09-01),29463600,10,76.9178,383052.97
+zeus-server,Linux 6.12.95+deb13-amd64,,1.82,rustc 1.98.1 (48a229cea 2026-09-01),29463600,1,134.2571,219456.55
+zeus-server,Linux 6.12.95+deb13-amd64,,1.82,rustc 1.98.1 (48a229cea 2026-09-01),29463600,2,134.1657,219606.06
+zeus-server,Linux 6.12.95+deb13-amd64,,1.82,rustc 1.98.1 (48a229cea 2026-09-01),29463600,3,134.4794,219093.85
+zeus-server,Linux 6.12.95+deb13-amd64,,1.82,rustc 1.98.1 (48a229cea 2026-09-01),29463600,4,134.608,218884.44
+zeus-server,Linux 6.12.95+deb13-amd64,,1.82,rustc 1.98.1 (48a229cea 2026-09-01),29463600,5,134.5818,218927.07
+zeus-server,Linux 6.12.95+deb13-amd64,,1.82,rustc 1.98.1 (48a229cea 2026-09-01),29463600,6,134.0929,219725.28
+zeus-server,Linux 6.12.95+deb13-amd64,,1.82,rustc 1.98.1 (48a229cea 2026-09-01),29463600,7,134.7834,218599.61
+zeus-server,Linux 6.12.95+deb13-amd64,,1.82,rustc 1.98.1 (48a229cea 2026-09-01),29463600,8,134.408,219210.24
+zeus-server,Linux 6.12.95+deb13-amd64,,1.82,rustc 1.98.1 (48a229cea 2026-09-01),29463600,9,134.321,219352.09
+zeus-server,Linux 6.12.95+deb13-amd64,,1.82,rustc 1.98.1 (48a229cea 2026-09-01),29463600,10,134.154,219625.14
