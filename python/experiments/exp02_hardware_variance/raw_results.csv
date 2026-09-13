@@ -49,3 +49,13 @@ zeus-server,Linux 6.12.95+deb13-amd64,,1.82,rustc 1.98.1 (48a229cea 2026-09-01),
 zeus-server,Linux 6.12.95+deb13-amd64,,1.82,rustc 1.98.1 (48a229cea 2026-09-01),29463600,8,134.408,219210.24
 zeus-server,Linux 6.12.95+deb13-amd64,,1.82,rustc 1.98.1 (48a229cea 2026-09-01),29463600,9,134.321,219352.09
 zeus-server,Linux 6.12.95+deb13-amd64,,1.82,rustc 1.98.1 (48a229cea 2026-09-01),29463600,10,134.154,219625.14
+DESKTOP-OPSCAPO,Windows 11,"Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",15.69,rustc 1.98.1 (48a229cea 2026-09-01),29463600,1,20.4575,1440233.21
+DESKTOP-OPSCAPO,Windows 11,"Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",15.69,rustc 1.98.1 (48a229cea 2026-09-01),29463600,2,20.9498,1406393.21
+DESKTOP-OPSCAPO,Windows 11,"Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",15.69,rustc 1.98.1 (48a229cea 2026-09-01),29463600,3,20.1256,1463989.24
+DESKTOP-OPSCAPO,Windows 11,"Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",15.69,rustc 1.98.1 (48a229cea 2026-09-01),29463600,4,20.6415,1427394.8
+DESKTOP-OPSCAPO,Windows 11,"Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",15.69,rustc 1.98.1 (48a229cea 2026-09-01),29463600,5,20.3605,1447095.77
+DESKTOP-OPSCAPO,Windows 11,"Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",15.69,rustc 1.98.1 (48a229cea 2026-09-01),29463600,6,20.5585,1433161.25
+DESKTOP-OPSCAPO,Windows 11,"Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",15.69,rustc 1.98.1 (48a229cea 2026-09-01),29463600,7,20.2901,1452115.23
+DESKTOP-OPSCAPO,Windows 11,"Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",15.69,rustc 1.98.1 (48a229cea 2026-09-01),29463600,8,20.5057,1436852.08
+DESKTOP-OPSCAPO,Windows 11,"Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",15.69,rustc 1.98.1 (48a229cea 2026-09-01),29463600,9,20.157,1461704.22
+DESKTOP-OPSCAPO,Windows 11,"Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",15.69,rustc 1.98.1 (48a229cea 2026-09-01),29463600,10,20.2012,1458507.39
