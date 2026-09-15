@@ -69,3 +69,13 @@ ip-172-31-2-105.ap-south-1.compute.internal,Linux 6.18.44-99.149.amzn2023.x86_64
 ip-172-31-2-105.ap-south-1.compute.internal,Linux 6.18.44-99.149.amzn2023.x86_64,x86_64,3.73,rustc 1.98.1 (48a229cea 2026-09-01),29463600,8,24.3296,1211020.93
 ip-172-31-2-105.ap-south-1.compute.internal,Linux 6.18.44-99.149.amzn2023.x86_64,x86_64,3.73,rustc 1.98.1 (48a229cea 2026-09-01),29463600,9,24.1421,1220422.45
 ip-172-31-2-105.ap-south-1.compute.internal,Linux 6.18.44-99.149.amzn2023.x86_64,x86_64,3.73,rustc 1.98.1 (48a229cea 2026-09-01),29463600,10,23.8078,1237559.05
+Macmini,Darwin 25.5.0,arm,8,rustc 1.98.0 (88d9e12ae 2026-08-18) (Homebrew),29463600,1,31.0772,948076.87
+Macmini,Darwin 25.5.0,arm,8,rustc 1.98.0 (88d9e12ae 2026-08-18) (Homebrew),29463600,2,30.6378,961674.81
+Macmini,Darwin 25.5.0,arm,8,rustc 1.98.0 (88d9e12ae 2026-08-18) (Homebrew),29463600,3,30.4364,968037.19
+Macmini,Darwin 25.5.0,arm,8,rustc 1.98.0 (88d9e12ae 2026-08-18) (Homebrew),29463600,4,30.9844,950916.9
+Macmini,Darwin 25.5.0,arm,8,rustc 1.98.0 (88d9e12ae 2026-08-18) (Homebrew),29463600,5,30.5136,965590.65
+Macmini,Darwin 25.5.0,arm,8,rustc 1.98.0 (88d9e12ae 2026-08-18) (Homebrew),29463600,6,30.6238,962114.07
+Macmini,Darwin 25.5.0,arm,8,rustc 1.98.0 (88d9e12ae 2026-08-18) (Homebrew),29463600,7,30.4768,966756.32
+Macmini,Darwin 25.5.0,arm,8,rustc 1.98.0 (88d9e12ae 2026-08-18) (Homebrew),29463600,8,30.6658,960797.88
+Macmini,Darwin 25.5.0,arm,8,rustc 1.98.0 (88d9e12ae 2026-08-18) (Homebrew),29463600,9,30.6148,962396.74
+Macmini,Darwin 25.5.0,arm,8,rustc 1.98.0 (88d9e12ae 2026-08-18) (Homebrew),29463600,10,30.5214,965340.96
