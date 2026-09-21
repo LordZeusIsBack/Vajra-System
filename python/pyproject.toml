@@ -37,6 +37,9 @@ build-backend = "hatchling.build"
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+exclude = [
+    "experiments/"
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]
