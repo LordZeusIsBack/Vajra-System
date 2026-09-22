@@ -27,7 +27,7 @@ def solve_puzzle(t_ops):
 
 
 def get_system_info():
-    """Collect host metadata, using ``Unknown`` when rustc is unavailable."""
+    """Describe the host so timings can be compared across hardware."""
     try:
         rustc_version = subprocess.check_output(['rustc', '--version']).decode().strip()
     except Exception:

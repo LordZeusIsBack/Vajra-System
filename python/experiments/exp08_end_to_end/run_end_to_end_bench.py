@@ -41,7 +41,7 @@ RESULTS_FILE = SCRIPT_DIR / "raw_results.csv"
 def find_vajra_binary():
     """Return the platform's release-mode Vajra binary.
 
-    Raises ``SystemError`` when the binary has not been built.
+    Raises `SystemError` when the binary has not been built.
     """
     exe_name = 'vajra.exe' if platform.system() == 'Windows' else 'vajra'
     candidate = REPO_ROOT / 'rust' / 'target' / 'release' / exe_name
@@ -50,7 +50,7 @@ def find_vajra_binary():
 
 
 def run_vajra(binary, args):
-    """Run a Vajra subcommand, raising ``RuntimeError`` on a nonzero exit."""
+    """Run a Vajra subcommand, raising `RuntimeError` on a nonzero exit."""
     result = subprocess.run(
         [str(binary), *args],
         capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=300
@@ -70,6 +70,7 @@ class SimulatedIPFS:
     is_real = False
 
     def __init__(self):
+        """Initialize an in-memory object store for dependency-free benchmarks."""
         self._store = {}
         self._n = 0
 
@@ -80,25 +81,41 @@ class SimulatedIPFS:
         self._store[cid] = data
         return cid
 
-    async def add_json(self, obj): return await self.add_bytes(json.dumps(obj, separators=(',', ':')).encode())
+    async def add_json(self, obj):
+        """Serialize and store a JSON object through the byte interface."""
+        return await self.add_bytes(json.dumps(obj, separators=(',', ':')).encode())
 
-    async def cat(self, cid): return self._store[cid]
+    async def cat(self, cid):
+        """Retrieve bytes from the in-memory store by synthetic CID."""
+        return self._store[cid]
 
-    async def cat_json(self, cid): return json.loads(await self.cat(cid))
+    async def cat_json(self, cid):
+        """Retrieve and decode a JSON object from the in-memory store."""
+        return json.loads(await self.cat(cid))
 
 
 class RealIPFS:
     is_real = True
 
-    def __init__(self, client): self._client = client
+    def __init__(self, client):
+        """Adapt the repository IPFS client to the benchmark's storage interface."""
+        self._client = client
 
-    async def add_bytes(self, data): return await self._client.add_bytes(data, node_index=0)
+    async def add_bytes(self, data):
+        """Store benchmark bytes on the selected live Kubo node."""
+        return await self._client.add_bytes(data, node_index=0)
 
-    async def add_json(self, obj): return await self._client.add_json(obj, node_index=0)
+    async def add_json(self, obj):
+        """Store benchmark JSON on the selected live Kubo node."""
+        return await self._client.add_json(obj, node_index=0)
 
-    async def cat(self, cid): return await self._client.cat(cid, node_index=0)
+    async def cat(self, cid):
+        """Retrieve benchmark bytes from the selected live Kubo node."""
+        return await self._client.cat(cid, node_index=0)
 
-    async def cat_json(self, cid): return await self._client.cat_json(cid, node_index=0)
+    async def cat_json(self, cid):
+        """Retrieve benchmark JSON from the selected live Kubo node."""
+        return await self._client.cat_json(cid, node_index=0)
 
 
 async def get_ipfs_backend():
@@ -121,7 +138,7 @@ async def run_one(binary, ipfs, pdf_bytes):
     """Run one complete lock, storage, fetch, and reconstruction cycle.
 
     Returns per-phase timings and uploaded byte count together with whether the
-    recovered PDF exactly matches ``pdf_bytes``. The selected IPFS backend is
+    recovered PDF exactly matches `pdf_bytes`. The selected IPFS backend is
     populated as a side effect.
     """
     timings = {}
@@ -224,7 +241,7 @@ async def run_one(binary, ipfs, pdf_bytes):
 
 
 async def main():
-    """Benchmark every configured PDF size and overwrite the results CSV."""
+    """Benchmark the end-to-end pipeline across all configured payload sizes."""
     binary = find_vajra_binary()
     ipfs = await get_ipfs_backend()
 

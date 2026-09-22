@@ -58,30 +58,30 @@ def build_reference_manifest():
     )
 
 def attack_none(manifest):
-    """Return an unchanged deep copy for the control case."""
+    """Copy the manifest unchanged to confirm valid controls are accepted."""
     return deepcopy(manifest)
 
 def attack_target_round(manifest):
-    """Return a copy with its drand target round incremented."""
+    """Alter the signed drand round to test tamper detection."""
     tampered = deepcopy(manifest)
     tampered['drand']['target_round'] += 1
     return tampered
 
 def attack_payload_cid(manifest):
-    """Return a copy that points to a substituted payload CID."""
+    """Replace the signed payload reference to model a storage swap."""
     tampered = deepcopy(manifest)
     tampered["payload_cid"] = "bafy_ATTACKER_SWAPPED_PAYLOAD"
     return tampered
 
 def attack_center_pubkey(manifest):
-    """Return a copy whose first center is assigned an attacker public key."""
+    """Substitute an attacker's centre key to test registry integrity."""
     tampered = deepcopy(manifest)
     attacker_privkey, attacker_pubkey = generate_keypair()
     tampered["centers"][0]["pubkey"] = attacker_pubkey
     return tampered
 
 def attack_shard_cid(manifest):
-    """Return a copy that points to a substituted first-shard CID."""
+    """Replace a signed shard reference to model targeted shard tampering."""
     tampered = deepcopy(manifest)
     tampered["shard_cids"][0]["cid"] = "bafy_ATTACKER_SWAPPED_SHARD"
     return tampered
