@@ -48,6 +48,7 @@ PUBLISH_TIME = settings.drand_genesis + settings.drand_period * TARGET_ROUND
 results = []
 
 def find_vajra_binary():
+    """Locate a release binary when full success-path verification is available."""
     for name in ('vajra', 'vajra.exe'):
         candidate = REPO_ROOT / 'rust' / 'target' / 'release' / name
         if candidate.exists():
@@ -59,6 +60,7 @@ VAJRA_BIN = find_vajra_binary()
 
 
 def prepare_real_puzzle(vajra_binary, workdir):
+    """Create real puzzle artifacts for scenarios that can exercise the Rust solver."""
     from drand_client import derive_aad
 
     puzzle_path = workdir / "puzzle.json"
@@ -86,20 +88,24 @@ def prepare_real_puzzle(vajra_binary, workdir):
 
 class FakeIPFS:
     def __init__(self, node_count: int = 3):
+        """Create isolated node stores so outage placement can be controlled."""
         self.node_count = node_count
         self._nodes: list[dict[str, bytes]] = [dict() for _ in range(node_count)]
         self._control: dict[str, bytes] = {}
         self.down_nodes: set[int] = set()
 
     def put_raw(self, cid: str, data: bytes, *, node_index: int = 0, control: bool = False):
+        """Seed bytes on one simulated node or in the shared control store."""
         if control: self._control[cid] = data
         else: self._nodes[node_index % self.node_count][cid] = data
 
     def put_json(self, cid: str, obj: dict, *, node_index: int = 0, control: bool = False):
+        """Serialize and seed a JSON object using deterministic encoding."""
         self.put_raw(cid, json.dumps(obj, sort_keys=True, separators=(",", ":")).encode(),
                      node_index=node_index, control=control)
 
     async def cat(self, cid: str, *, node_index: int = 0):
+        """Fetch bytes while honoring the scenario's simulated node outages."""
         if cid in self._control: return self._control[cid]
         if node_index in self.down_nodes: raise IPFSError(f'Fake node {node_index} is down')
         store = self._nodes[node_index % self.node_count]
@@ -107,10 +113,12 @@ class FakeIPFS:
         return store[cid]
 
     async def cat_json(self, cid: str, *, node_index: int = 0):
+        """Fetch and decode JSON through the same simulated availability rules."""
         return json.loads(await self.cat(cid, node_index=node_index))
 
 
 def build_instance(ipfs: FakeIPFS, puzzle_bytes: bytes, locked_bytes: bytes, *, n: int = N, k: int = K, isolate_control: bool = False):
+    """Assemble a complete encrypted fixture with controllable object placement."""
     from drand_client import derive_aad
 
     registry, keypairs = bulk_generate(n, id_prefix='CENTER')
@@ -157,6 +165,7 @@ def build_instance(ipfs: FakeIPFS, puzzle_bytes: bytes, locked_bytes: bytes, *, 
 
 
 async def try_centre(instance: dict, idx: int):
+    """Model one centre retrieving the manifest and decrypting its assigned shard."""
     ipfs = instance['ipfs']
     try: manifest = await ipfs.cat_json(instance['manifest_cid'])
     except IPFSError: return None
@@ -167,6 +176,7 @@ async def try_centre(instance: dict, idx: int):
 
 
 async def gather_available(instance: dict, n: int) -> tuple[list[int], list[bytes]]:
+    """Collect shares from every centre still reachable in the current scenario."""
     idxs, shares = [], []
     for i in range(n):
         share = await try_centre(instance, i)
@@ -177,6 +187,7 @@ async def gather_available(instance: dict, n: int) -> tuple[list[int], list[byte
 
 
 async def reconstruct_data_key_layer(manifest: dict, plaintext_shares: list[bytes], ipfs, aad: bytes):
+    """Validate threshold recovery through the outer authenticated-encryption layer."""
     k_val = int(manifest['k'])
     if len(plaintext_shares) < k_val: raise ReconstructError(f'Need >= {k_val} plaintext shares to reconstruct, got {len(plaintext_shares)}')
     seen_x: set[int] = set()
@@ -192,6 +203,7 @@ async def reconstruct_data_key_layer(manifest: dict, plaintext_shares: list[byte
 
 
 async def attempt_pipeline(manifest: dict, plaintext_shares: list[bytes], ipfs, aad: bytes):
+    """Exercise the deepest reconstruction path supported by the local toolchain."""
     if VAJRA_BIN is not None:
         try:
             pdf_bytes = await  combine_shares_to_pdf(manifest, plaintext_shares, ipfs, VAJRA_BIN, skip_drand_check=True)
@@ -204,6 +216,7 @@ async def attempt_pipeline(manifest: dict, plaintext_shares: list[bytes], ipfs, 
 
 
 def record(scenario: str, case: str, repetition: int, expected: str, actual: str, notes: str):
+    """Store one expected-versus-actual scenario result for the final report."""
     results.append(
         {
             'scenario': scenario,
@@ -222,6 +235,7 @@ def record(scenario: str, case: str, repetition: int, expected: str, actual: str
 
 
 async def scenario_manifest_control_spof():
+    """Measure the impact of losing the node that holds control-plane objects."""
     print("[1-2] Manifest/payload/puzzle placement (node 0, per main.py's real layout)")
     for label, down in (('baseline_all_up', set()), ('primary_node_down', {0})):
         for rep in range(1, 4):
@@ -236,6 +250,7 @@ async def scenario_manifest_control_spof():
 
 
 async def scenario_shard_granularity_3nodes():
+    """Measure shard availability after one secondary node fails in a three-node layout."""
     print('[3] Shard availability under a single non-primary IPFS node outage (3-node deploy)')
     for rep in range(1, 4):
         down_node = random.choice([1, 2])
@@ -250,6 +265,7 @@ async def scenario_shard_granularity_3nodes():
 
 
 async def scenario_shard_granularity_10nodes():
+    """Measure threshold resilience when each shard has its own storage node."""
     print('[4] Shard availability under N IPFS nodes down (10-node, 1-shard-per-node deployment)')
     for down_count in (0, 1, 2, 3):
         for rep in range(1, 4):
@@ -264,6 +280,7 @@ async def scenario_shard_granularity_10nodes():
 
 
 async def scenario_wrong_share():
+    """Confirm authenticated decryption detects a corrupted Shamir share."""
     print('[5] One of the k submitted shares is wrong (bit-flipped, not missing)')
     for rep in range(1, 6):
         ipfs = FakeIPFS(node_count=3)
@@ -281,6 +298,7 @@ async def scenario_wrong_share():
 
 
 async def scenario_duplicate_share(tmp_root: Path):
+    """Confirm duplicate centre submissions cannot satisfy the threshold."""
     print('[6] Two share files claim the same centre index (coordinator-level)')
     for rep in range(1, 4):
         ipfs = FakeIPFS(node_count=3)
@@ -310,6 +328,7 @@ async def scenario_duplicate_share(tmp_root: Path):
 
 
 async def scenario_wrong_id_ipfs_swap():
+    """Confirm shard identity checks reject a centre ID swapped in storage."""
     print('[7] A shard on IPFS claims the wrong centre_id (belt-and-braces IPFS-level check)')
     for rep in range(1, 6):
         ipfs = FakeIPFS(node_count=3)
@@ -334,6 +353,7 @@ async def scenario_wrong_id_ipfs_swap():
 
 
 async def scenario_wrong_id_coordinator(tmp_root: Path):
+    """Confirm the coordinator rejects a share file labeled as another centre."""
     print('\n[8] A share file is mislabeled with the wrong centre_id (coordinator-level check)')
     for rep in range(1, 4):
         ipfs = FakeIPFS(node_count=3)
@@ -365,6 +385,7 @@ async def scenario_wrong_id_coordinator(tmp_root: Path):
 
 
 async def scenario_corrupted_shard_ciphertext():
+    """Confirm shard AEAD authentication catches ciphertext corruption."""
     print("[9] A shard's ciphertext is bit-flipped on IPFS before the centre decrypts it")
     for rep in range(1, 6):
         ipfs = FakeIPFS(node_count=3)
@@ -390,6 +411,7 @@ async def scenario_corrupted_shard_ciphertext():
 
 
 async def scenario_corrupted_payload_ciphertext():
+    """Confirm outer-layer authentication catches payload corruption."""
     print('[10] The double-locked payload itself is bit-flipped on IPFS')
     for rep in range(1, 6):
         ipfs = FakeIPFS(node_count=3)
@@ -405,11 +427,14 @@ async def scenario_corrupted_payload_ciphertext():
 
 
 def _round_payload(round_num: int, *, signature: str = 'aa' * 48, randomness: str = 'ee' * 32):
+    """Build deterministic drand responses for relay agreement scenarios."""
     return {'round': round_num, 'signature': signature, 'randomness': randomness}
 
 
 def _mock_handler(per_relay_response: dict):
+    """Create an HTTP handler that gives each relay its configured response."""
     def handler(request: httpx.Request) -> httpx.Response:
+        """Translate a relay fixture into a response or simulated connection error."""
         resp = per_relay_response.get(request.url.host)
         if isinstance(resp, Exception): raise resp
         if isinstance(resp, int): return httpx.Response(status_code=resp)
@@ -418,10 +443,12 @@ def _mock_handler(per_relay_response: dict):
 
 
 async def _fetch_round_with_mock(per_relay_response: dict, *, min_agreement: int):
+    """Run the real drand agreement logic against controlled relay responses."""
     transport = httpx.MockTransport(_mock_handler(per_relay_response))
     original = httpx.AsyncClient
 
     def patched(*args, **kwargs):
+        """Route transient drand clients through the scenario's mock transport."""
         kwargs['transport'] = transport
         return original(*args, **kwargs)
 
@@ -431,6 +458,7 @@ async def _fetch_round_with_mock(per_relay_response: dict, *, min_agreement: int
 
 
 async def scenario_drand_relays_down() -> None:
+    """Verify relay outages and disagreement respect the configured quorum."""
     print('\n[11] drand relay availability (real fetch_round, mocked transport)')
     relays = settings.drand_relay_list
     hosts = [httpx.URL(r).host for r in relays]
@@ -461,6 +489,7 @@ async def scenario_drand_relays_down() -> None:
 
 
 async def main() -> None:
+    """Run every failure scenario and write their reproducible outcomes."""
     global PUZZLE_BYTES, LOCKED_BYTES
     print('Starting Experiment 07: Failure Testing')
     if VAJRA_BIN is not None: print(f'Found compiled vajra binary at {VAJRA_BIN} — success-path cases will run real `vajra solve`.')

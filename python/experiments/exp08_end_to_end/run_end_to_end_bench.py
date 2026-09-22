@@ -39,6 +39,7 @@ RESULTS_FILE = SCRIPT_DIR / "raw_results.csv"
 
 
 def find_vajra_binary():
+    """Require the release binary used for representative end-to-end timings."""
     exe_name = 'vajra.exe' if platform.system() == 'Windows' else 'vajra'
     candidate = REPO_ROOT / 'rust' / 'target' / 'release' / exe_name
     if not candidate.exists(): raise SystemError(f'Compiled binary not found at {candidate}. Build it first: `cargo build --release`')
@@ -46,6 +47,7 @@ def find_vajra_binary():
 
 
 def run_vajra(binary, args):
+    """Run one Rust pipeline stage and surface bounded diagnostic output on failure."""
     result = subprocess.run(
         [str(binary), *args],
         capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=300
@@ -55,6 +57,7 @@ def run_vajra(binary, args):
 
 
 def make_pdf_bytes(size_mb):
+    """Create a deterministic PDF-shaped payload at the requested benchmark size."""
     size_bytes = int(size_mb * 1024 * 1024)
     header = b'%PDF-1.4\n'
     return header + (b'\x00' * (size_bytes - len(header)))
@@ -64,37 +67,56 @@ class SimulatedIPFS:
     is_real = False
 
     def __init__(self):
+        """Initialize an in-memory object store for dependency-free benchmarks."""
         self._store = {}
         self._n = 0
 
     async def add_bytes(self, data):
+        """Store bytes under a stable synthetic CID for the current run."""
         self._n += 1
         cid = f'sim-{self._n}'
         self._store[cid] = data
         return cid
 
-    async def add_json(self, obj): return await self.add_bytes(json.dumps(obj, separators=(',', ':')).encode())
+    async def add_json(self, obj):
+        """Serialize and store a JSON object through the byte interface."""
+        return await self.add_bytes(json.dumps(obj, separators=(',', ':')).encode())
 
-    async def cat(self, cid): return self._store[cid]
+    async def cat(self, cid):
+        """Retrieve bytes from the in-memory store by synthetic CID."""
+        return self._store[cid]
 
-    async def cat_json(self, cid): return json.loads(await self.cat(cid))
+    async def cat_json(self, cid):
+        """Retrieve and decode a JSON object from the in-memory store."""
+        return json.loads(await self.cat(cid))
 
 
 class RealIPFS:
     is_real = True
 
-    def __init__(self, client): self._client = client
+    def __init__(self, client):
+        """Adapt the repository IPFS client to the benchmark's storage interface."""
+        self._client = client
 
-    async def add_bytes(self, data): return await self._client.add_bytes(data, node_index=0)
+    async def add_bytes(self, data):
+        """Store benchmark bytes on the selected live Kubo node."""
+        return await self._client.add_bytes(data, node_index=0)
 
-    async def add_json(self, obj): return await self._client.add_json(obj, node_index=0)
+    async def add_json(self, obj):
+        """Store benchmark JSON on the selected live Kubo node."""
+        return await self._client.add_json(obj, node_index=0)
 
-    async def cat(self, cid): return await self._client.cat(cid, node_index=0)
+    async def cat(self, cid):
+        """Retrieve benchmark bytes from the selected live Kubo node."""
+        return await self._client.cat(cid, node_index=0)
 
-    async def cat_json(self, cid): return await self._client.cat_json(cid, node_index=0)
+    async def cat_json(self, cid):
+        """Retrieve benchmark JSON from the selected live Kubo node."""
+        return await self._client.cat_json(cid, node_index=0)
 
 
 async def get_ipfs_backend():
+    """Prefer a live Kubo daemon while retaining a reproducible local fallback."""
     if FORCE_FAKE_IPFS:
         print('[ipfs] FORCE_FAKE_IPFS=True -> using simulated in-memory IPFS')
         return SimulatedIPFS()
@@ -110,6 +132,7 @@ async def get_ipfs_backend():
 
 
 async def run_one(binary, ipfs, pdf_bytes):
+    """Time one full lock, distribute, recover, and solve cycle."""
     timings = {}
 
     with tempfile.TemporaryDirectory(prefix="vajra_e2e_") as tmpdir:
@@ -210,6 +233,7 @@ async def run_one(binary, ipfs, pdf_bytes):
 
 
 async def main():
+    """Benchmark the end-to-end pipeline across all configured payload sizes."""
     binary = find_vajra_binary()
     ipfs = await get_ipfs_backend()
 

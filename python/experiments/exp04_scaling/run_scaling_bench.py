@@ -27,6 +27,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 
 def generate_mock_centers(n: int) -> list[dict]:
+    """Generate disposable centre keys needed to benchmark larger deployments."""
     keys = []
 
     # Resolve the absolute path to the main python/ directory
@@ -73,6 +74,7 @@ def generate_mock_centers(n: int) -> list[dict]:
     return keys
 
 def run_scaling_experiment():
+    """Measure locking and reconstruction costs as centre counts increase."""
     configurations = [
         {"n": 5, "k": 3},
         {"n": 10, "k": 5},
