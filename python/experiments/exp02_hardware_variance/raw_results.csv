@@ -1,0 +1,121 @@
+Machine,OS,CPU,RAM_GB,Rust Version,T_ops,Run,solve_time_sec,squarings_sec
+LAPTOP-7N2PNSTD,Windows 11,"AMD64 Family 23 Model 96 Stepping 1, AuthenticAMD",15.42,rustc 1.95.0 (59807616e 2026-04-14),29463600,1,33.7369,873334.69
+LAPTOP-7N2PNSTD,Windows 11,"AMD64 Family 23 Model 96 Stepping 1, AuthenticAMD",15.42,rustc 1.95.0 (59807616e 2026-04-14),29463600,2,31.443,937047.53
+LAPTOP-7N2PNSTD,Windows 11,"AMD64 Family 23 Model 96 Stepping 1, AuthenticAMD",15.42,rustc 1.95.0 (59807616e 2026-04-14),29463600,3,31.1865,944755.38
+LAPTOP-7N2PNSTD,Windows 11,"AMD64 Family 23 Model 96 Stepping 1, AuthenticAMD",15.42,rustc 1.95.0 (59807616e 2026-04-14),29463600,4,30.7793,957252.91
+LAPTOP-7N2PNSTD,Windows 11,"AMD64 Family 23 Model 96 Stepping 1, AuthenticAMD",15.42,rustc 1.95.0 (59807616e 2026-04-14),29463600,5,31.0225,949748.58
+LAPTOP-7N2PNSTD,Windows 11,"AMD64 Family 23 Model 96 Stepping 1, AuthenticAMD",15.42,rustc 1.95.0 (59807616e 2026-04-14),29463600,6,30.9172,952984.14
+LAPTOP-7N2PNSTD,Windows 11,"AMD64 Family 23 Model 96 Stepping 1, AuthenticAMD",15.42,rustc 1.95.0 (59807616e 2026-04-14),29463600,7,30.7533,958061.59
+LAPTOP-7N2PNSTD,Windows 11,"AMD64 Family 23 Model 96 Stepping 1, AuthenticAMD",15.42,rustc 1.95.0 (59807616e 2026-04-14),29463600,8,31.0599,948605.99
+LAPTOP-7N2PNSTD,Windows 11,"AMD64 Family 23 Model 96 Stepping 1, AuthenticAMD",15.42,rustc 1.95.0 (59807616e 2026-04-14),29463600,9,31.0597,948610.63
+LAPTOP-7N2PNSTD,Windows 11,"AMD64 Family 23 Model 96 Stepping 1, AuthenticAMD",15.42,rustc 1.95.0 (59807616e 2026-04-14),29463600,10,30.8544,954925.16
+LAPTOP-JD5CAV5S,Windows 11,"Intel64 Family 6 Model 154 Stepping 4, GenuineIntel",15.68,rustc 1.98.1 (48a229cea 2026-09-01),29463600,1,45.9823,640759.58
+LAPTOP-JD5CAV5S,Windows 11,"Intel64 Family 6 Model 154 Stepping 4, GenuineIntel",15.68,rustc 1.98.1 (48a229cea 2026-09-01),29463600,2,42.9801,685517.08
+LAPTOP-JD5CAV5S,Windows 11,"Intel64 Family 6 Model 154 Stepping 4, GenuineIntel",15.68,rustc 1.98.1 (48a229cea 2026-09-01),29463600,3,44.88,656497.21
+LAPTOP-JD5CAV5S,Windows 11,"Intel64 Family 6 Model 154 Stepping 4, GenuineIntel",15.68,rustc 1.98.1 (48a229cea 2026-09-01),29463600,4,41.3649,712285.33
+LAPTOP-JD5CAV5S,Windows 11,"Intel64 Family 6 Model 154 Stepping 4, GenuineIntel",15.68,rustc 1.98.1 (48a229cea 2026-09-01),29463600,5,40.8476,721305.73
+LAPTOP-JD5CAV5S,Windows 11,"Intel64 Family 6 Model 154 Stepping 4, GenuineIntel",15.68,rustc 1.98.1 (48a229cea 2026-09-01),29463600,6,40.4579,728252.84
+LAPTOP-JD5CAV5S,Windows 11,"Intel64 Family 6 Model 154 Stepping 4, GenuineIntel",15.68,rustc 1.98.1 (48a229cea 2026-09-01),29463600,7,39.4751,746385.33
+LAPTOP-JD5CAV5S,Windows 11,"Intel64 Family 6 Model 154 Stepping 4, GenuineIntel",15.68,rustc 1.98.1 (48a229cea 2026-09-01),29463600,8,35.9635,819264.3
+LAPTOP-JD5CAV5S,Windows 11,"Intel64 Family 6 Model 154 Stepping 4, GenuineIntel",15.68,rustc 1.98.1 (48a229cea 2026-09-01),29463600,9,36.3484,810589.68
+LAPTOP-JD5CAV5S,Windows 11,"Intel64 Family 6 Model 154 Stepping 4, GenuineIntel",15.68,rustc 1.98.1 (48a229cea 2026-09-01),29463600,10,36.5168,806851.61
+FRONTERA,Windows 11,"AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD",7.35,rustc 1.98.1 (48a229cea 2026-09-01),29463600,1,60.8724,484022.47
+FRONTERA,Windows 11,"AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD",7.35,rustc 1.98.1 (48a229cea 2026-09-01),29463600,2,61.2265,481223.09
+FRONTERA,Windows 11,"AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD",7.35,rustc 1.98.1 (48a229cea 2026-09-01),29463600,3,59.6647,493819.28
+FRONTERA,Windows 11,"AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD",7.35,rustc 1.98.1 (48a229cea 2026-09-01),29463600,4,61.2383,481130.24
+FRONTERA,Windows 11,"AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD",7.35,rustc 1.98.1 (48a229cea 2026-09-01),29463600,5,60.1419,489901.51
+FRONTERA,Windows 11,"AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD",7.35,rustc 1.98.1 (48a229cea 2026-09-01),29463600,6,60.0567,490596.53
+FRONTERA,Windows 11,"AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD",7.35,rustc 1.98.1 (48a229cea 2026-09-01),29463600,7,61.0063,482960.33
+FRONTERA,Windows 11,"AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD",7.35,rustc 1.98.1 (48a229cea 2026-09-01),29463600,8,60.8314,484348.63
+FRONTERA,Windows 11,"AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD",7.35,rustc 1.98.1 (48a229cea 2026-09-01),29463600,9,61.7926,476814.31
+FRONTERA,Windows 11,"AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD",7.35,rustc 1.98.1 (48a229cea 2026-09-01),29463600,10,60.2872,488720.58
+shiva,Windows 10,"Intel64 Family 6 Model 78 Stepping 3, GenuineIntel",19.83,rustc 1.98.1 (48a229cea 2026-09-01),29463600,1,100.8557,292136.23
+shiva,Windows 10,"Intel64 Family 6 Model 78 Stepping 3, GenuineIntel",19.83,rustc 1.98.1 (48a229cea 2026-09-01),29463600,2,87.4821,336795.82
+shiva,Windows 10,"Intel64 Family 6 Model 78 Stepping 3, GenuineIntel",19.83,rustc 1.98.1 (48a229cea 2026-09-01),29463600,3,82.8994,355413.73
+shiva,Windows 10,"Intel64 Family 6 Model 78 Stepping 3, GenuineIntel",19.83,rustc 1.98.1 (48a229cea 2026-09-01),29463600,4,79.2228,371908.24
+shiva,Windows 10,"Intel64 Family 6 Model 78 Stepping 3, GenuineIntel",19.83,rustc 1.98.1 (48a229cea 2026-09-01),29463600,5,80.6623,365271.0
+shiva,Windows 10,"Intel64 Family 6 Model 78 Stepping 3, GenuineIntel",19.83,rustc 1.98.1 (48a229cea 2026-09-01),29463600,6,78.7264,374253.24
+shiva,Windows 10,"Intel64 Family 6 Model 78 Stepping 3, GenuineIntel",19.83,rustc 1.98.1 (48a229cea 2026-09-01),29463600,7,70.9423,415317.99
+shiva,Windows 10,"Intel64 Family 6 Model 78 Stepping 3, GenuineIntel",19.83,rustc 1.98.1 (48a229cea 2026-09-01),29463600,8,80.7813,364733.03
+shiva,Windows 10,"Intel64 Family 6 Model 78 Stepping 3, GenuineIntel",19.83,rustc 1.98.1 (48a229cea 2026-09-01),29463600,9,80.0332,368142.33
+shiva,Windows 10,"Intel64 Family 6 Model 78 Stepping 3, GenuineIntel",19.83,rustc 1.98.1 (48a229cea 2026-09-01),29463600,10,76.9178,383052.97
+zeus-server,Linux 6.12.95+deb13-amd64,,1.82,rustc 1.98.1 (48a229cea 2026-09-01),29463600,1,134.2571,219456.55
+zeus-server,Linux 6.12.95+deb13-amd64,,1.82,rustc 1.98.1 (48a229cea 2026-09-01),29463600,2,134.1657,219606.06
+zeus-server,Linux 6.12.95+deb13-amd64,,1.82,rustc 1.98.1 (48a229cea 2026-09-01),29463600,3,134.4794,219093.85
+zeus-server,Linux 6.12.95+deb13-amd64,,1.82,rustc 1.98.1 (48a229cea 2026-09-01),29463600,4,134.608,218884.44
+zeus-server,Linux 6.12.95+deb13-amd64,,1.82,rustc 1.98.1 (48a229cea 2026-09-01),29463600,5,134.5818,218927.07
+zeus-server,Linux 6.12.95+deb13-amd64,,1.82,rustc 1.98.1 (48a229cea 2026-09-01),29463600,6,134.0929,219725.28
+zeus-server,Linux 6.12.95+deb13-amd64,,1.82,rustc 1.98.1 (48a229cea 2026-09-01),29463600,7,134.7834,218599.61
+zeus-server,Linux 6.12.95+deb13-amd64,,1.82,rustc 1.98.1 (48a229cea 2026-09-01),29463600,8,134.408,219210.24
+zeus-server,Linux 6.12.95+deb13-amd64,,1.82,rustc 1.98.1 (48a229cea 2026-09-01),29463600,9,134.321,219352.09
+zeus-server,Linux 6.12.95+deb13-amd64,,1.82,rustc 1.98.1 (48a229cea 2026-09-01),29463600,10,134.154,219625.14
+DESKTOP-OPSCAPO,Windows 11,"Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",15.69,rustc 1.98.1 (48a229cea 2026-09-01),29463600,1,20.4575,1440233.21
+DESKTOP-OPSCAPO,Windows 11,"Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",15.69,rustc 1.98.1 (48a229cea 2026-09-01),29463600,2,20.9498,1406393.21
+DESKTOP-OPSCAPO,Windows 11,"Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",15.69,rustc 1.98.1 (48a229cea 2026-09-01),29463600,3,20.1256,1463989.24
+DESKTOP-OPSCAPO,Windows 11,"Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",15.69,rustc 1.98.1 (48a229cea 2026-09-01),29463600,4,20.6415,1427394.8
+DESKTOP-OPSCAPO,Windows 11,"Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",15.69,rustc 1.98.1 (48a229cea 2026-09-01),29463600,5,20.3605,1447095.77
+DESKTOP-OPSCAPO,Windows 11,"Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",15.69,rustc 1.98.1 (48a229cea 2026-09-01),29463600,6,20.5585,1433161.25
+DESKTOP-OPSCAPO,Windows 11,"Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",15.69,rustc 1.98.1 (48a229cea 2026-09-01),29463600,7,20.2901,1452115.23
+DESKTOP-OPSCAPO,Windows 11,"Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",15.69,rustc 1.98.1 (48a229cea 2026-09-01),29463600,8,20.5057,1436852.08
+DESKTOP-OPSCAPO,Windows 11,"Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",15.69,rustc 1.98.1 (48a229cea 2026-09-01),29463600,9,20.157,1461704.22
+DESKTOP-OPSCAPO,Windows 11,"Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",15.69,rustc 1.98.1 (48a229cea 2026-09-01),29463600,10,20.2012,1458507.39
+ip-172-31-2-105.ap-south-1.compute.internal,Linux 6.18.44-99.149.amzn2023.x86_64,x86_64,3.73,rustc 1.98.1 (48a229cea 2026-09-01),29463600,1,24.5061,1202298.32
+ip-172-31-2-105.ap-south-1.compute.internal,Linux 6.18.44-99.149.amzn2023.x86_64,x86_64,3.73,rustc 1.98.1 (48a229cea 2026-09-01),29463600,2,24.7179,1191992.06
+ip-172-31-2-105.ap-south-1.compute.internal,Linux 6.18.44-99.149.amzn2023.x86_64,x86_64,3.73,rustc 1.98.1 (48a229cea 2026-09-01),29463600,3,24.4613,1204500.28
+ip-172-31-2-105.ap-south-1.compute.internal,Linux 6.18.44-99.149.amzn2023.x86_64,x86_64,3.73,rustc 1.98.1 (48a229cea 2026-09-01),29463600,4,24.2191,1216541.84
+ip-172-31-2-105.ap-south-1.compute.internal,Linux 6.18.44-99.149.amzn2023.x86_64,x86_64,3.73,rustc 1.98.1 (48a229cea 2026-09-01),29463600,5,23.8967,1232958.43
+ip-172-31-2-105.ap-south-1.compute.internal,Linux 6.18.44-99.149.amzn2023.x86_64,x86_64,3.73,rustc 1.98.1 (48a229cea 2026-09-01),29463600,6,24.191,1217957.53
+ip-172-31-2-105.ap-south-1.compute.internal,Linux 6.18.44-99.149.amzn2023.x86_64,x86_64,3.73,rustc 1.98.1 (48a229cea 2026-09-01),29463600,7,24.2475,1215120.26
+ip-172-31-2-105.ap-south-1.compute.internal,Linux 6.18.44-99.149.amzn2023.x86_64,x86_64,3.73,rustc 1.98.1 (48a229cea 2026-09-01),29463600,8,24.3296,1211020.93
+ip-172-31-2-105.ap-south-1.compute.internal,Linux 6.18.44-99.149.amzn2023.x86_64,x86_64,3.73,rustc 1.98.1 (48a229cea 2026-09-01),29463600,9,24.1421,1220422.45
+ip-172-31-2-105.ap-south-1.compute.internal,Linux 6.18.44-99.149.amzn2023.x86_64,x86_64,3.73,rustc 1.98.1 (48a229cea 2026-09-01),29463600,10,23.8078,1237559.05
+Macmini,Darwin 25.5.0,arm,8,rustc 1.98.0 (88d9e12ae 2026-08-18) (Homebrew),29463600,1,31.0772,948076.87
+Macmini,Darwin 25.5.0,arm,8,rustc 1.98.0 (88d9e12ae 2026-08-18) (Homebrew),29463600,2,30.6378,961674.81
+Macmini,Darwin 25.5.0,arm,8,rustc 1.98.0 (88d9e12ae 2026-08-18) (Homebrew),29463600,3,30.4364,968037.19
+Macmini,Darwin 25.5.0,arm,8,rustc 1.98.0 (88d9e12ae 2026-08-18) (Homebrew),29463600,4,30.9844,950916.9
+Macmini,Darwin 25.5.0,arm,8,rustc 1.98.0 (88d9e12ae 2026-08-18) (Homebrew),29463600,5,30.5136,965590.65
+Macmini,Darwin 25.5.0,arm,8,rustc 1.98.0 (88d9e12ae 2026-08-18) (Homebrew),29463600,6,30.6238,962114.07
+Macmini,Darwin 25.5.0,arm,8,rustc 1.98.0 (88d9e12ae 2026-08-18) (Homebrew),29463600,7,30.4768,966756.32
+Macmini,Darwin 25.5.0,arm,8,rustc 1.98.0 (88d9e12ae 2026-08-18) (Homebrew),29463600,8,30.6658,960797.88
+Macmini,Darwin 25.5.0,arm,8,rustc 1.98.0 (88d9e12ae 2026-08-18) (Homebrew),29463600,9,30.6148,962396.74
+Macmini,Darwin 25.5.0,arm,8,rustc 1.98.0 (88d9e12ae 2026-08-18) (Homebrew),29463600,10,30.5214,965340.96
+BOOK-9VQOIN2S0R,Windows 11,"ARMv8 (64-bit) Family 8 Model 1 Revision 201, Qualcomm Technologies Inc",15.6,rustc 1.98.1 (48a229cea 2026-09-01),29463600,1,34.9483,843063.41
+BOOK-9VQOIN2S0R,Windows 11,"ARMv8 (64-bit) Family 8 Model 1 Revision 201, Qualcomm Technologies Inc",15.6,rustc 1.98.1 (48a229cea 2026-09-01),29463600,2,35.1565,838070.87
+BOOK-9VQOIN2S0R,Windows 11,"ARMv8 (64-bit) Family 8 Model 1 Revision 201, Qualcomm Technologies Inc",15.6,rustc 1.98.1 (48a229cea 2026-09-01),29463600,3,35.7326,824558.13
+BOOK-9VQOIN2S0R,Windows 11,"ARMv8 (64-bit) Family 8 Model 1 Revision 201, Qualcomm Technologies Inc",15.6,rustc 1.98.1 (48a229cea 2026-09-01),29463600,4,34.9277,843560.11
+BOOK-9VQOIN2S0R,Windows 11,"ARMv8 (64-bit) Family 8 Model 1 Revision 201, Qualcomm Technologies Inc",15.6,rustc 1.98.1 (48a229cea 2026-09-01),29463600,5,34.7348,848244.61
+BOOK-9VQOIN2S0R,Windows 11,"ARMv8 (64-bit) Family 8 Model 1 Revision 201, Qualcomm Technologies Inc",15.6,rustc 1.98.1 (48a229cea 2026-09-01),29463600,6,34.7509,847851.41
+BOOK-9VQOIN2S0R,Windows 11,"ARMv8 (64-bit) Family 8 Model 1 Revision 201, Qualcomm Technologies Inc",15.6,rustc 1.98.1 (48a229cea 2026-09-01),29463600,7,34.8423,845627.05
+BOOK-9VQOIN2S0R,Windows 11,"ARMv8 (64-bit) Family 8 Model 1 Revision 201, Qualcomm Technologies Inc",15.6,rustc 1.98.1 (48a229cea 2026-09-01),29463600,8,35.2635,835526.96
+BOOK-9VQOIN2S0R,Windows 11,"ARMv8 (64-bit) Family 8 Model 1 Revision 201, Qualcomm Technologies Inc",15.6,rustc 1.98.1 (48a229cea 2026-09-01),29463600,9,35.2318,836278.91
+BOOK-9VQOIN2S0R,Windows 11,"ARMv8 (64-bit) Family 8 Model 1 Revision 201, Qualcomm Technologies Inc",15.6,rustc 1.98.1 (48a229cea 2026-09-01),29463600,10,34.7553,847743.58
+DESKTOP-FL719A0,Windows 11,"Intel64 Family 6 Model 142 Stepping 12, GenuineIntel",11.85,rustc 1.98.1 (48a229cea 2026-09-01),29463600,1,80.0339,368139.1
+DESKTOP-FL719A0,Windows 11,"Intel64 Family 6 Model 142 Stepping 12, GenuineIntel",11.85,rustc 1.98.1 (48a229cea 2026-09-01),29463600,2,79.4735,370734.68
+DESKTOP-FL719A0,Windows 11,"Intel64 Family 6 Model 142 Stepping 12, GenuineIntel",11.85,rustc 1.98.1 (48a229cea 2026-09-01),29463600,3,61.7273,477318.93
+DESKTOP-FL719A0,Windows 11,"Intel64 Family 6 Model 142 Stepping 12, GenuineIntel",11.85,rustc 1.98.1 (48a229cea 2026-09-01),29463600,4,48.9622,601761.91
+DESKTOP-FL719A0,Windows 11,"Intel64 Family 6 Model 142 Stepping 12, GenuineIntel",11.85,rustc 1.98.1 (48a229cea 2026-09-01),29463600,5,42.6443,690915.81
+DESKTOP-FL719A0,Windows 11,"Intel64 Family 6 Model 142 Stepping 12, GenuineIntel",11.85,rustc 1.98.1 (48a229cea 2026-09-01),29463600,6,42.7491,689221.8
+DESKTOP-FL719A0,Windows 11,"Intel64 Family 6 Model 142 Stepping 12, GenuineIntel",11.85,rustc 1.98.1 (48a229cea 2026-09-01),29463600,7,61.4431,479526.46
+DESKTOP-FL719A0,Windows 11,"Intel64 Family 6 Model 142 Stepping 12, GenuineIntel",11.85,rustc 1.98.1 (48a229cea 2026-09-01),29463600,8,74.4985,395492.75
+DESKTOP-FL719A0,Windows 11,"Intel64 Family 6 Model 142 Stepping 12, GenuineIntel",11.85,rustc 1.98.1 (48a229cea 2026-09-01),29463600,9,68.6737,429037.59
+DESKTOP-FL719A0,Windows 11,"Intel64 Family 6 Model 142 Stepping 12, GenuineIntel",11.85,rustc 1.98.1 (48a229cea 2026-09-01),29463600,10,60.2709,488852.46
+Manipal,Windows 11,"Intel64 Family 6 Model 142 Stepping 12, GenuineIntel",7.83,rustc 1.98.1 (48a229cea 2026-09-01),29463600,1,59.312,496755.83
+Manipal,Windows 11,"Intel64 Family 6 Model 142 Stepping 12, GenuineIntel",7.83,rustc 1.98.1 (48a229cea 2026-09-01),29463600,2,62.5991,470671.28
+Manipal,Windows 11,"Intel64 Family 6 Model 142 Stepping 12, GenuineIntel",7.83,rustc 1.98.1 (48a229cea 2026-09-01),29463600,3,56.9008,517806.01
+Manipal,Windows 11,"Intel64 Family 6 Model 142 Stepping 12, GenuineIntel",7.83,rustc 1.98.1 (48a229cea 2026-09-01),29463600,4,56.3857,522536.68
+Manipal,Windows 11,"Intel64 Family 6 Model 142 Stepping 12, GenuineIntel",7.83,rustc 1.98.1 (48a229cea 2026-09-01),29463600,5,57.0962,516034.08
+Manipal,Windows 11,"Intel64 Family 6 Model 142 Stepping 12, GenuineIntel",7.83,rustc 1.98.1 (48a229cea 2026-09-01),29463600,6,57.3784,513495.92
+Manipal,Windows 11,"Intel64 Family 6 Model 142 Stepping 12, GenuineIntel",7.83,rustc 1.98.1 (48a229cea 2026-09-01),29463600,7,64.4177,457383.27
+Manipal,Windows 11,"Intel64 Family 6 Model 142 Stepping 12, GenuineIntel",7.83,rustc 1.98.1 (48a229cea 2026-09-01),29463600,8,60.9075,483743.64
+Manipal,Windows 11,"Intel64 Family 6 Model 142 Stepping 12, GenuineIntel",7.83,rustc 1.98.1 (48a229cea 2026-09-01),29463600,9,52.6993,559089.39
+Manipal,Windows 11,"Intel64 Family 6 Model 142 Stepping 12, GenuineIntel",7.83,rustc 1.98.1 (48a229cea 2026-09-01),29463600,10,54.7278,538366.55
+GOKU,Windows 10,"Intel64 Family 6 Model 165 Stepping 2, GenuineIntel",7.84,rustc 1.98.1 (48a229cea 2026-09-01),29463600,1,48.3022,609984.12
+GOKU,Windows 10,"Intel64 Family 6 Model 165 Stepping 2, GenuineIntel",7.84,rustc 1.98.1 (48a229cea 2026-09-01),29463600,2,46.6479,631617.25
+GOKU,Windows 10,"Intel64 Family 6 Model 165 Stepping 2, GenuineIntel",7.84,rustc 1.98.1 (48a229cea 2026-09-01),29463600,3,44.9425,655583.7
+GOKU,Windows 10,"Intel64 Family 6 Model 165 Stepping 2, GenuineIntel",7.84,rustc 1.98.1 (48a229cea 2026-09-01),29463600,4,41.3698,712200.46
+GOKU,Windows 10,"Intel64 Family 6 Model 165 Stepping 2, GenuineIntel",7.84,rustc 1.98.1 (48a229cea 2026-09-01),29463600,5,41.33,712886.99
+GOKU,Windows 10,"Intel64 Family 6 Model 165 Stepping 2, GenuineIntel",7.84,rustc 1.98.1 (48a229cea 2026-09-01),29463600,6,39.4859,746179.98
+GOKU,Windows 10,"Intel64 Family 6 Model 165 Stepping 2, GenuineIntel",7.84,rustc 1.98.1 (48a229cea 2026-09-01),29463600,7,38.2865,769555.2
+GOKU,Windows 10,"Intel64 Family 6 Model 165 Stepping 2, GenuineIntel",7.84,rustc 1.98.1 (48a229cea 2026-09-01),29463600,8,37.8005,779450.02
+GOKU,Windows 10,"Intel64 Family 6 Model 165 Stepping 2, GenuineIntel",7.84,rustc 1.98.1 (48a229cea 2026-09-01),29463600,9,38.0324,774696.73
+GOKU,Windows 10,"Intel64 Family 6 Model 165 Stepping 2, GenuineIntel",7.84,rustc 1.98.1 (48a229cea 2026-09-01),29463600,10,37.7175,781164.76
