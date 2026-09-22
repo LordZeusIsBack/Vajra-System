@@ -26,6 +26,7 @@ RESULTS_FILE = SCRIPT_DIR / 'raw_results.csv'
 
 
 def build_locked_exam(k: int) -> dict:
+    """Create a fresh encrypted k-of-N fixture for compromise attempts."""
     registry, keypairs = bulk_generate(N, id_prefix='CENTER')
 
     data_key = secrets.token_bytes(32)
@@ -46,6 +47,11 @@ def build_locked_exam(k: int) -> dict:
 
 
 def attempt_decrypt(instance: dict, compromised_indices: list[int]) -> tuple[bool, float]:
+    """Try to decrypt a fixture with selected centers' private keys.
+
+    Returns the decryption outcome and elapsed seconds. Center decryption,
+    reconstruction, and authentication failures are reported as unsuccessful.
+    """
     start= perf_counter()
 
     recovered_shares = []
@@ -72,6 +78,7 @@ def attempt_decrypt(instance: dict, compromised_indices: list[int]) -> tuple[boo
 
 
 def run_experiment():
+    """Measure decryption outcomes across thresholds and compromise levels."""
     print(
         f"Starting Experiment 06: Centre Compromise "
         f"(n={N}, thresholds={K_VALUES}, {REPETITIONS} reps each)"

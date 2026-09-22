@@ -19,6 +19,7 @@ CSV_FILE = SCRIPT_DIR / 'raw_results.csv'
 
 
 def solve_puzzle(t_ops):
+    """Invoke the Rust puzzle solver for the requested operation count."""
     subprocess.run(
         [RUST_BINARY, '--solve', str(t_ops)],
         capture_output=True
@@ -26,6 +27,7 @@ def solve_puzzle(t_ops):
 
 
 def get_system_info():
+    """Collect host metadata, using ``Unknown`` when rustc is unavailable."""
     try:
         rustc_version = subprocess.check_output(['rustc', '--version']).decode().strip()
     except Exception:
@@ -41,6 +43,11 @@ def get_system_info():
 
 
 def run_hardware_bench(repetition=5):
+    """Measure repeated solves of the reference puzzle on the current host.
+
+    Returns an empty list when the puzzle or compiled solver is unavailable.
+    A failed solver process raises ``subprocess.CalledProcessError``.
+    """
     if not PUZZLE_FILE.exists():
         print(f'Error: {PUZZLE_FILE} not found. Please copy the reference puzzle to this directory.')
         return []

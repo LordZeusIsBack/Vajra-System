@@ -27,6 +27,10 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 
 def generate_mock_centers(n: int) -> list[dict]:
+    """Generate temporary center keypairs and return their records sorted by ID.
+
+    The process exits with status 1 if the key-generation subprocess fails.
+    """
     keys = []
 
     # Resolve the absolute path to the main python/ directory
@@ -73,6 +77,7 @@ def generate_mock_centers(n: int) -> list[dict]:
     return keys
 
 def run_scaling_experiment():
+    """Benchmark locking and outer-layer reconstruction as center counts scale."""
     configurations = [
         {"n": 5, "k": 3},
         {"n": 10, "k": 5},
