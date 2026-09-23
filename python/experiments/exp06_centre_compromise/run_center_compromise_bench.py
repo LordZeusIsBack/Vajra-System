@@ -47,7 +47,11 @@ def build_locked_exam(k: int) -> dict:
 
 
 def attempt_decrypt(instance: dict, compromised_indices: list[int]) -> tuple[bool, float]:
-    """Test whether a selected set of compromised centres can decrypt the payload."""
+    """Try to decrypt a fixture with selected centers' private keys.
+
+    Returns the decryption outcome and elapsed seconds. Center decryption,
+    reconstruction, and authentication failures are reported as unsuccessful.
+    """
     start= perf_counter()
 
     recovered_shares = []

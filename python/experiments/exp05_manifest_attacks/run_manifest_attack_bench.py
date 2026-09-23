@@ -24,7 +24,7 @@ REPETITIONS = 10
 RESULTS_FILE = SCRIPT_DIR / 'raw_results.csv'
 
 def build_reference_manifest():
-    """Create a valid signed manifest to serve as each attack's control."""
+    """Build a fresh signed manifest with synthetic CIDs and center keys."""
     registry, privkeys = bulk_generate(N, id_prefix='CENTER')
 
     chain_hash = settings.drand_chain_hash
@@ -95,7 +95,7 @@ ATTACKS = [
 ]
 
 def run_experiment():
-    """Verify that signed-manifest mutations are rejected consistently."""
+    """Check whether manifest verification rejects each synthetic mutation."""
     print(
         f"Starting Experiment 05: Manifest Integrity Attacks "
         f"({len(ATTACKS)} attacks x {REPETITIONS} repetitions)"

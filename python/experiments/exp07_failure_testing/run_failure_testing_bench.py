@@ -48,7 +48,7 @@ PUBLISH_TIME = settings.drand_genesis + settings.drand_period * TARGET_ROUND
 results = []
 
 def find_vajra_binary():
-    """Locate a release binary when full success-path verification is available."""
+    """Return an available release-mode Vajra binary, or `None`."""
     for name in ('vajra', 'vajra.exe'):
         candidate = REPO_ROOT / 'rust' / 'target' / 'release' / name
         if candidate.exists():
@@ -60,7 +60,11 @@ VAJRA_BIN = find_vajra_binary()
 
 
 def prepare_real_puzzle(vajra_binary, workdir):
-    """Create real puzzle artifacts for scenarios that can exercise the Rust solver."""
+    """Generate and lock the dummy exam with the compiled Vajra binary.
+
+    Returns the serialized puzzle and locked payload. A failed ``generate`` or
+    `lock` command raises `RuntimeError`.
+    """
     from drand_client import derive_aad
 
     puzzle_path = workdir / "puzzle.json"
@@ -95,7 +99,7 @@ class FakeIPFS:
         self.down_nodes: set[int] = set()
 
     def put_raw(self, cid: str, data: bytes, *, node_index: int = 0, control: bool = False):
-        """Seed bytes on one simulated node or in the shared control store."""
+        """Store bytes on one simulated node or in the always-available control store."""
         if control: self._control[cid] = data
         else: self._nodes[node_index % self.node_count][cid] = data
 
@@ -105,7 +109,7 @@ class FakeIPFS:
                      node_index=node_index, control=control)
 
     async def cat(self, cid: str, *, node_index: int = 0):
-        """Fetch bytes while honoring the scenario's simulated node outages."""
+        """Fetch bytes, failing when the selected node is down or lacks the CID."""
         if cid in self._control: return self._control[cid]
         if node_index in self.down_nodes: raise IPFSError(f'Fake node {node_index} is down')
         store = self._nodes[node_index % self.node_count]
@@ -113,12 +117,16 @@ class FakeIPFS:
         return store[cid]
 
     async def cat_json(self, cid: str, *, node_index: int = 0):
-        """Fetch and decode JSON through the same simulated availability rules."""
+        """Fetch and decode a JSON object from the selected simulated node."""
         return json.loads(await self.cat(cid, node_index=node_index))
 
 
 def build_instance(ipfs: FakeIPFS, puzzle_bytes: bytes, locked_bytes: bytes, *, n: int = N, k: int = K, isolate_control: bool = False):
-    """Assemble a complete encrypted fixture with controllable object placement."""
+    """Build and distribute a signed failure-test fixture across ``ipfs``.
+
+    When `isolate_control` is true, the puzzle, payload, and manifest use the
+    backend's always-available control store instead of node zero.
+    """
     from drand_client import derive_aad
 
     registry, keypairs = bulk_generate(n, id_prefix='CENTER')
@@ -165,7 +173,11 @@ def build_instance(ipfs: FakeIPFS, puzzle_bytes: bytes, locked_bytes: bytes, *, 
 
 
 async def try_centre(instance: dict, idx: int):
-    """Model one centre retrieving the manifest and decrypting its assigned shard."""
+    """Fetch and verify the manifest, then decrypt one center's assigned shard.
+
+    Returns `None` when the manifest is unavailable or invalid, or when shard
+    reconstruction rejects the center's data.
+    """
     ipfs = instance['ipfs']
     try: manifest = await ipfs.cat_json(instance['manifest_cid'])
     except IPFSError: return None
@@ -176,7 +188,7 @@ async def try_centre(instance: dict, idx: int):
 
 
 async def gather_available(instance: dict, n: int) -> tuple[list[int], list[bytes]]:
-    """Collect shares from every centre still reachable in the current scenario."""
+    """Return successful center indices and their plaintext shares for `range(n)`."""
     idxs, shares = [], []
     for i in range(n):
         share = await try_centre(instance, i)
@@ -187,7 +199,11 @@ async def gather_available(instance: dict, n: int) -> tuple[list[int], list[byte
 
 
 async def reconstruct_data_key_layer(manifest: dict, plaintext_shares: list[bytes], ipfs, aad: bytes):
-    """Validate threshold recovery through the outer authenticated-encryption layer."""
+    """Exercise key reconstruction and payload retrieval without the Rust solver.
+
+    Raises `ReconstructError` for an insufficient threshold, duplicate share
+    coordinates, or Shamir reconstruction failure.
+    """
     k_val = int(manifest['k'])
     if len(plaintext_shares) < k_val: raise ReconstructError(f'Need >= {k_val} plaintext shares to reconstruct, got {len(plaintext_shares)}')
     seen_x: set[int] = set()
@@ -203,7 +219,11 @@ async def reconstruct_data_key_layer(manifest: dict, plaintext_shares: list[byte
 
 
 async def attempt_pipeline(manifest: dict, plaintext_shares: list[bytes], ipfs, aad: bytes):
-    """Exercise the deepest reconstruction path supported by the local toolchain."""
+    """Attempt reconstruction and return a success flag with a diagnostic note.
+
+    The full pipeline runs when a compiled Vajra binary is available; otherwise
+    the benchmark stops after exercising the outer data-key layer.
+    """
     if VAJRA_BIN is not None:
         try:
             pdf_bytes = await  combine_shares_to_pdf(manifest, plaintext_shares, ipfs, VAJRA_BIN, skip_drand_check=True)
@@ -235,7 +255,7 @@ def record(scenario: str, case: str, repetition: int, expected: str, actual: str
 
 
 async def scenario_manifest_control_spof():
-    """Measure the impact of losing the node that holds control-plane objects."""
+    """Measure the effect of losing the node that holds all control objects."""
     print("[1-2] Manifest/payload/puzzle placement (node 0, per main.py's real layout)")
     for label, down in (('baseline_all_up', set()), ('primary_node_down', {0})):
         for rep in range(1, 4):
@@ -427,12 +447,12 @@ async def scenario_corrupted_payload_ciphertext():
 
 
 def _round_payload(round_num: int, *, signature: str = 'aa' * 48, randomness: str = 'ee' * 32):
-    """Build deterministic drand responses for relay agreement scenarios."""
+    """Build a minimal synthetic drand round response."""
     return {'round': round_num, 'signature': signature, 'randomness': randomness}
 
 
 def _mock_handler(per_relay_response: dict):
-    """Create an HTTP handler that gives each relay its configured response."""
+    """Create an HTTPX handler that dispatches synthetic responses by relay host."""
     def handler(request: httpx.Request) -> httpx.Response:
         """Translate a relay fixture into a response or simulated connection error."""
         resp = per_relay_response.get(request.url.host)
@@ -443,7 +463,7 @@ def _mock_handler(per_relay_response: dict):
 
 
 async def _fetch_round_with_mock(per_relay_response: dict, *, min_agreement: int):
-    """Run the real drand agreement logic against controlled relay responses."""
+    """Fetch the target round through a temporary relay-response mock."""
     transport = httpx.MockTransport(_mock_handler(per_relay_response))
     original = httpx.AsyncClient
 

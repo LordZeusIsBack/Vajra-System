@@ -14,7 +14,7 @@ DUMMY_EXAM = Path('dummy_exam.txt')
 
 
 def get_system_metadata() -> dict:
-    """Capture the host and revision so benchmark results remain attributable."""
+    """Collect host details and the current short Git revision for result rows."""
     try:
         commit = subprocess.check_output(
             ['git', 'rev-parse', '--short', 'HEAD'],
@@ -33,7 +33,7 @@ def get_system_metadata() -> dict:
 
 
 def run_experiment():
-    """Measure RSW solve latency across the configured target durations."""
+    """Measure Rust puzzle solve times and append successful runs to the CSV."""
     if not RUST_BINARY_PATH.exists():
         print(f'Error: Rust binary not found at {RUST_BINARY_PATH}')
         return

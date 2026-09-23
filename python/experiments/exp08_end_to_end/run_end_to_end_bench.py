@@ -39,7 +39,10 @@ RESULTS_FILE = SCRIPT_DIR / "raw_results.csv"
 
 
 def find_vajra_binary():
-    """Require the release binary used for representative end-to-end timings."""
+    """Return the platform's release-mode Vajra binary.
+
+    Raises `SystemError` when the binary has not been built.
+    """
     exe_name = 'vajra.exe' if platform.system() == 'Windows' else 'vajra'
     candidate = REPO_ROOT / 'rust' / 'target' / 'release' / exe_name
     if not candidate.exists(): raise SystemError(f'Compiled binary not found at {candidate}. Build it first: `cargo build --release`')
@@ -47,7 +50,7 @@ def find_vajra_binary():
 
 
 def run_vajra(binary, args):
-    """Run one Rust pipeline stage and surface bounded diagnostic output on failure."""
+    """Run a Vajra subcommand, raising `RuntimeError` on a nonzero exit."""
     result = subprocess.run(
         [str(binary), *args],
         capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=300
@@ -57,7 +60,7 @@ def run_vajra(binary, args):
 
 
 def make_pdf_bytes(size_mb):
-    """Create a deterministic PDF-shaped payload at the requested benchmark size."""
+    """Create a deterministic PDF-like payload of the requested size in MiB."""
     size_bytes = int(size_mb * 1024 * 1024)
     header = b'%PDF-1.4\n'
     return header + (b'\x00' * (size_bytes - len(header)))
@@ -72,7 +75,7 @@ class SimulatedIPFS:
         self._n = 0
 
     async def add_bytes(self, data):
-        """Store bytes under a stable synthetic CID for the current run."""
+        """Store bytes under a new synthetic CID and return that CID."""
         self._n += 1
         cid = f'sim-{self._n}'
         self._store[cid] = data
@@ -116,7 +119,7 @@ class RealIPFS:
 
 
 async def get_ipfs_backend():
-    """Prefer a live Kubo daemon while retaining a reproducible local fallback."""
+    """Select live Kubo when reachable, otherwise use the in-memory backend."""
     if FORCE_FAKE_IPFS:
         print('[ipfs] FORCE_FAKE_IPFS=True -> using simulated in-memory IPFS')
         return SimulatedIPFS()
@@ -132,7 +135,12 @@ async def get_ipfs_backend():
 
 
 async def run_one(binary, ipfs, pdf_bytes):
-    """Time one full lock, distribute, recover, and solve cycle."""
+    """Run one complete lock, storage, fetch, and reconstruction cycle.
+
+    Returns per-phase timings and uploaded byte count together with whether the
+    recovered PDF exactly matches `pdf_bytes`. The selected IPFS backend is
+    populated as a side effect.
+    """
     timings = {}
 
     with tempfile.TemporaryDirectory(prefix="vajra_e2e_") as tmpdir:
