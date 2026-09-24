@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 import shamir
 
 def run_experiment():
-    """Measure reconstruction outcomes above and below each Shamir threshold."""
+    """Record reconstruction results and latency for each threshold/share count."""
     n = 10
     thresholds = [3, 5, 8, 10]
     results = []
