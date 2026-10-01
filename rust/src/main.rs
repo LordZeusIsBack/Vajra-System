@@ -175,6 +175,7 @@ fn cmd_lock(puzzle: PathBuf, secret: PathBuf, input: PathBuf, output: PathBuf, a
     let timing = timing_enabled();
 
     // Load files
+    let t0 = Instant::now();
     let params: puzzle::PuzzleParams = load_json(&puzzle, "puzzle params");
     let secret_data: puzzle::AdminSecret = load_json(&secret, "admin secret");
     let plaintext =
@@ -239,8 +240,12 @@ fn cmd_solve(puzzle: PathBuf, locked: PathBuf, output: PathBuf, aad_hex: String)
         hex::decode(&aad_hex).unwrap_or_else(|e| panic!("Bad --aad-hex value: {e}"))
     };
 
+    let timing = timing_enabled();
+
+    let t0 = Instant::now();
     let params: puzzle::PuzzleParams = load_json(&puzzle, "puzzle params");
     let locked_data: crypto::LockedPayload = load_json(&locked, "locked exam");
+    let parse_secs = t0.elapsed().as_secs_f64();
 
     if !aad.is_empty() {
         println!(
@@ -249,19 +254,41 @@ fn cmd_solve(puzzle: PathBuf, locked: PathBuf, output: PathBuf, aad_hex: String)
         );
     }
 
-    // Slow path: sequential squaring
+    // Slow path: sequential squaring. This is the ONLY stage bound by
+    // T_ops — it never touches plaintext/ciphertext bytes, so it is the
+    // number to cite for "solving time is independent of exam size."
+    let t0 = Instant::now();
     let k = puzzle::solve(&params);
+    let squaring_secs = t0.elapsed().as_secs_f64();
 
     // Decrypt
     println!("Decrypting exam ...");
-    match crypto::decrypt(&k, &locked_data, &aad) {
+    let t0 = Instant::now();
+    let decrypt_result = crypto::decrypt(&k, &locked_data, &aad);
+    let decrypt_secs = t0.elapsed().as_secs_f64();
+
+    match decrypt_result {
         Ok(plaintext) => {
+            let t0 = Instant::now();
             fs::write(&output, &plaintext)
                 .unwrap_or_else(|e| panic!("Cannot write {}: {e}", output.display()));
+            let write_secs = t0.elapsed().as_secs_f64();
+
+            if timing {
+                eprintln!(
+                    "VAJRA_TIMING solve parse={parse_secs:.6} squaring={squaring_secs:.6} decrypt={decrypt_secs:.6} write={write_secs:.6}"
+                );
+            }
+
             println!("✓ Exam decrypted and saved to: {}", output.display());
             println!("  → {} bytes", plaintext.len());
         }
         Err(e) => {
+            if timing {
+                eprintln!(
+                    "VAJRA_TIMING solve parse={parse_secs:.6} squaring={squaring_secs:.6} decrypt={decrypt_secs:.6} write=0"
+                );
+            }
             eprintln!("\n✗ Decryption failed: {e}");
             eprintln!("  This should not happen if puzzle.json and locked.json are untampered");
             eprintln!("  and --aad-hex matches the value used at lock time.");
