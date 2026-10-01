@@ -10,7 +10,16 @@ mod crypto;
 mod puzzle;
 
 use clap::{Parser, Subcommand};
-use std::{fs, path::PathBuf};
+use std::{fs, path::PathBuf, time::Instant};
+
+/// Opt-in, stderr-only stage timing for benchmarking. Off by default; has no
+/// effect on stdout, output files, or exit codes either way. Set
+/// `VAJRA_TIMING=1` to enable. Used by experiments/exp08_end_to_end so it can
+/// separate pure RSW squaring time from file I/O and AES-GCM cost, instead of
+/// only seeing the combined wall time of the whole CLI call.
+fn timing_enabled() -> bool {
+    std::env::var("VAJRA_TIMING").is_ok()
+}
 
 // ─── CLI Definition ──────────────────────────────────────────────────────────
 
@@ -163,11 +172,14 @@ fn cmd_lock(puzzle: PathBuf, secret: PathBuf, input: PathBuf, output: PathBuf, a
         hex::decode(&aad_hex).unwrap_or_else(|e| panic!("Bad --aad-hex value: {e}"))
     };
 
+    let timing = timing_enabled();
+
     // Load files
     let params: puzzle::PuzzleParams = load_json(&puzzle, "puzzle params");
     let secret_data: puzzle::AdminSecret = load_json(&secret, "admin secret");
     let plaintext =
         fs::read(&input).unwrap_or_else(|e| panic!("Cannot read {}: {e}", input.display()));
+    let parse_secs = t0.elapsed().as_secs_f64();
 
     println!("Input:  {} ({} bytes)", input.display(), plaintext.len());
     println!("Puzzle: {} squarings required", params.t_ops);
@@ -178,16 +190,29 @@ fn cmd_lock(puzzle: PathBuf, secret: PathBuf, input: PathBuf, output: PathBuf, a
 
     // Admin fast path: compute K using φ(N) shortcut
     println!("Computing K via φ(N) shortcut (fast) ...");
+    let t0 = Instant::now();
     let k = puzzle::admin_compute_key(&params, &secret_data);
+    let keyderiv_secs = t0.elapsed().as_secs_f64();
     println!("✓ K computed\n");
 
     // Encrypt
     println!("Encrypting with AES-256-GCM ...");
+    let t0 = Instant::now();
     let locked = crypto::encrypt(&k, &plaintext, &aad);
+    let encrypt_secs = t0.elapsed().as_secs_f64();
+
+    let t0 = Instant::now();
     let locked_json =
         serde_json::to_string_pretty(&locked).expect("Failed to serialize locked payload");
     fs::write(&output, &locked_json)
         .unwrap_or_else(|e| panic!("Cannot write {}: {e}", output.display()));
+    let write_secs = t0.elapsed().as_secs_f64();
+
+    if timing {
+        eprintln!(
+            "VAJRA_TIMING lock parse={parse_secs:.6} keyderiv={keyderiv_secs:.6} encrypt={encrypt_secs:.6} write={write_secs:.6}"
+        );
+    }
 
     println!("✓ Locked exam written to: {}\n", output.display());
     println!("┌──────────────────────────────────────────────────────┐");
