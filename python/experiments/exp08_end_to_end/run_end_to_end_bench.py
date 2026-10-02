@@ -42,6 +42,10 @@ TIMING_LINE_RE = re.compile(r"^VAJRA_TIMING (\w+) (.+)$")
 
 
 def find_vajra_binary() -> Path:
+    """Return the platform's release binary path under ``rust/target/release``.
+
+    Raise SystemExit with build instructions if the path does not exist.
+    """
     exe_name = "vajra.exe" if platform.system() == "Windows" else "vajra"
     candidate = REPO_ROOT / "rust" / "target" / "release" / exe_name
     if not candidate.exists():
@@ -53,6 +57,17 @@ def find_vajra_binary() -> Path:
 
 
 def run_vajra(binary: Path, args: list[str]) -> dict[str, float]:
+    """Run a Vajra subcommand with timing output enabled.
+
+    ``args`` contains the subcommand followed by its CLI arguments. Return
+    stderr timing values in seconds under ``<command>_<stage>_sec`` keys;
+    return an empty dict when no timing lines are present. Later values
+    replace earlier ones for the same key.
+
+    Raise RuntimeError on a nonzero exit, subprocess.TimeoutExpired after
+    300 seconds, or ValueError for a timing value that cannot be parsed as
+    a float. Process startup errors propagate as OSError.
+    """
     env = {**os.environ, "VAJRA_TIMING": "1"}
     result = subprocess.run(
         [str(binary), *args],
@@ -74,6 +89,12 @@ def run_vajra(binary: Path, args: list[str]) -> dict[str, float]:
 
 
 def make_pdf_bytes(size_mb: float) -> bytes:
+    """Return a deterministic PDF-like header and zero padding for a size in MiB.
+
+    The byte count is truncated to an integer, with a minimum of the
+    8-byte header even for zero or negative sizes. NaN raises ValueError;
+    infinity raises OverflowError.
+    """
     size_bytes = int(size_mb * 1024 * 1024)
     header = b"%PDF-1.4\n"
     return header + (b"\x00" * (size_bytes - len(header)))
@@ -83,22 +104,34 @@ class SimulatedIPFS:
     is_real = False
 
     def __init__(self) -> None:
+        """Initialize an empty in-memory store with its own synthetic CID counter."""
         self._store: dict[str, bytes] = {}
         self._n = 0
 
     async def add_bytes(self, data: bytes) -> str:
+        """Store bytes under a new synthetic CID and return it, even for duplicate data."""
         self._n += 1
         cid = f"sim-{self._n}"
         self._store[cid] = data
         return cid
 
     async def add_json(self, obj: dict) -> str:
+        """Store compact UTF-8 JSON and return its synthetic CID.
+
+        JSON serialization errors (TypeError or ValueError) propagate.
+        """
         return await self.add_bytes(json.dumps(obj, separators=(",", ":")).encode())
 
     async def cat(self, cid: str) -> bytes:
+        """Return stored bytes for a synthetic CID; raise KeyError if it is unknown."""
         return self._store[cid]
 
     async def cat_json(self, cid: str) -> dict:
+        """Decode the JSON value stored at a synthetic CID.
+
+        Raise KeyError for an unknown CID. JSONDecodeError and UnicodeDecodeError
+        propagate for invalid JSON or invalid text encoding, respectively.
+        """
         return json.loads(await self.cat(cid))
 
 
@@ -106,22 +139,46 @@ class RealIPFS:
     is_real = True
 
     def __init__(self, client) -> None:
+        """Adapt an IPFSClient to use its first configured node for every operation."""
         self._client = client
 
     async def add_bytes(self, data: bytes) -> str:
+        """Upload and pin bytes on the first configured node, returning the CID.
+
+        IPFSError for unsuccessful Kubo responses and HTTP transport errors propagate.
+        """
         return await self._client.add_bytes(data, node_index=0)
 
     async def add_json(self, obj: dict) -> str:
+        """Upload and pin compact, sorted JSON on the first node, returning the CID.
+
+        JSON serialization, IPFSError, and HTTP transport errors propagate.
+        """
         return await self._client.add_json(obj, node_index=0)
 
     async def cat(self, cid: str) -> bytes:
+        """Fetch bytes by CID from the first configured node.
+
+        IPFSError for unsuccessful Kubo responses and HTTP transport errors propagate.
+        """
         return await self._client.cat(cid, node_index=0)
 
     async def cat_json(self, cid: str) -> dict:
+        """Fetch and decode a JSON value by CID from the first configured node.
+
+        The client raises IPFSError for unsuccessful Kubo responses or invalid
+        JSON. HTTP transport errors and UnicodeDecodeError also propagate.
+        """
         return await self._client.cat_json(cid, node_index=0)
 
 
 async def get_ipfs_backend():
+    """Return a live backend if the first configured Kubo node answers the probe.
+
+    Return a fresh SimulatedIPFS when FORCE_FAKE_IPFS is set or any Exception
+    occurs while importing, initializing, or probing the client. The version
+    probe has a two-second timeout; no other nodes are tried.
+    """
     if FORCE_FAKE_IPFS:
         print("[ipfs] FORCE_FAKE_IPFS=True -> using simulated in-memory IPFS")
         return SimulatedIPFS()
@@ -137,6 +194,20 @@ async def get_ipfs_backend():
 
 
 async def run_one(binary: Path, ipfs, pdf_bytes: bytes) -> tuple[dict, bool]:
+    """Run one lock, upload, fetch, and reconstruction cycle using the configured N/K.
+
+    Return ``(metrics, correct)`` with stage durations in seconds and whether
+    the recovered bytes equal ``pdf_bytes``. Lock and solve wall times include
+    input writes and output reads; internal CLI timings are included only
+    when emitted by the binary. ``total_ipfs_bytes`` estimates uploaded bytes
+    using default JSON serialization for shards, so it can differ from the
+    backend's actual serialized size.
+
+    Uploaded objects remain in ``ipfs``. Temporary files are removed on a
+    best-effort basis, including on failure; cleanup errors are ignored.
+    Subprocess, file I/O, backend, and cryptographic errors propagate;
+    ``correct=False`` only reports a completed reconstruction with different bytes.
+    """
     timings: dict[str, float] = {}
     tmpdir = tempfile.mkdtemp(prefix="vajra_e2e_")
     try:
@@ -258,6 +329,13 @@ FIELDNAMES = [
 
 
 async def main() -> None:
+    """Benchmark the configured payload sizes and repetitions, then overwrite RESULTS_FILE.
+
+    CSV timings are rounded to six decimal places in seconds; unavailable
+    CLI timings are left blank. Reconstruction mismatches are recorded and
+    counted without aborting. SystemExit for a missing binary and errors
+    from benchmark runs or CSV writing propagate.
+    """
     binary = find_vajra_binary()
     ipfs = await get_ipfs_backend()
 
