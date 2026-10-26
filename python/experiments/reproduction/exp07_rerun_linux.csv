@@ -1,0 +1,66 @@
+scenario,case,repetition,n,k,expected_result,actual_result,passed,notes
+manifest_control_placement,baseline_all_up,1,10,8,Success,Success,True,10/10 centres could even reach the manifest+their shard; reconstructed 54-byte PDF via real `vajra solve`
+manifest_control_placement,baseline_all_up,2,10,8,Success,Success,True,10/10 centres could even reach the manifest+their shard; reconstructed 54-byte PDF via real `vajra solve`
+manifest_control_placement,baseline_all_up,3,10,8,Success,Success,True,10/10 centres could even reach the manifest+their shard; reconstructed 54-byte PDF via real `vajra solve`
+manifest_control_placement,primary_node_down,1,10,8,Fail,Fail,True,"0/10 centres could even reach the manifest+their shard; Need ≥ 8 plaintext shares to reconstruct, got 0"
+manifest_control_placement,primary_node_down,2,10,8,Fail,Fail,True,"0/10 centres could even reach the manifest+their shard; Need ≥ 8 plaintext shares to reconstruct, got 0"
+manifest_control_placement,primary_node_down,3,10,8,Fail,Fail,True,"0/10 centres could even reach the manifest+their shard; Need ≥ 8 plaintext shares to reconstruct, got 0"
+shard_granularity_3nodes,node_2_down,1,10,8,Fail,Fail,True,{len(idxs)}/{N} centres available (node {down_node} of 3 down); {note}
+shard_granularity_3nodes,node_2_down,2,10,8,Fail,Fail,True,{len(idxs)}/{N} centres available (node {down_node} of 3 down); {note}
+shard_granularity_3nodes,node_2_down,3,10,8,Fail,Fail,True,{len(idxs)}/{N} centres available (node {down_node} of 3 down); {note}
+shard_granularity_10nodes,0_nodes_down,1,10,8,Success,Success,True,10/10 centres available (down=[]); reconstructed 54-byte PDF via real `vajra solve`
+shard_granularity_10nodes,0_nodes_down,2,10,8,Success,Success,True,10/10 centres available (down=[]); reconstructed 54-byte PDF via real `vajra solve`
+shard_granularity_10nodes,0_nodes_down,3,10,8,Success,Success,True,10/10 centres available (down=[]); reconstructed 54-byte PDF via real `vajra solve`
+shard_granularity_10nodes,1_nodes_down,1,10,8,Success,Success,True,9/10 centres available (down=[0]); reconstructed 54-byte PDF via real `vajra solve`
+shard_granularity_10nodes,1_nodes_down,2,10,8,Success,Success,True,9/10 centres available (down=[9]); reconstructed 54-byte PDF via real `vajra solve`
+shard_granularity_10nodes,1_nodes_down,3,10,8,Success,Success,True,9/10 centres available (down=[8]); reconstructed 54-byte PDF via real `vajra solve`
+shard_granularity_10nodes,2_nodes_down,1,10,8,Success,Success,True,"8/10 centres available (down=[1, 8]); reconstructed 54-byte PDF via real `vajra solve`"
+shard_granularity_10nodes,2_nodes_down,2,10,8,Success,Success,True,"8/10 centres available (down=[4, 5]); reconstructed 54-byte PDF via real `vajra solve`"
+shard_granularity_10nodes,2_nodes_down,3,10,8,Success,Success,True,"8/10 centres available (down=[1, 6]); reconstructed 54-byte PDF via real `vajra solve`"
+shard_granularity_10nodes,3_nodes_down,1,10,8,Fail,Fail,True,"7/10 centres available (down=[0, 1, 9]); Need ≥ 8 plaintext shares to reconstruct, got 7"
+shard_granularity_10nodes,3_nodes_down,2,10,8,Fail,Fail,True,"7/10 centres available (down=[0, 1, 9]); Need ≥ 8 plaintext shares to reconstruct, got 7"
+shard_granularity_10nodes,3_nodes_down,3,10,8,Fail,Fail,True,"7/10 centres available (down=[3, 6, 8]); Need ≥ 8 plaintext shares to reconstruct, got 7"
+wrong_share,single_share_corrupted,1,10,8,Fail,Fail,True,"Shamir itself can't detect a wrong share (by design, see shamir.py) — the outer AES-GCM tag is what catches it: Outer AES-GCM decryption failed. Either the submitted shares are wrong/insufficient, the payload has been tampered with, or the manifest's drand fields don't match what was used at lock time."
+wrong_share,single_share_corrupted,2,10,8,Fail,Fail,True,"Shamir itself can't detect a wrong share (by design, see shamir.py) — the outer AES-GCM tag is what catches it: Outer AES-GCM decryption failed. Either the submitted shares are wrong/insufficient, the payload has been tampered with, or the manifest's drand fields don't match what was used at lock time."
+wrong_share,single_share_corrupted,3,10,8,Fail,Fail,True,"Shamir itself can't detect a wrong share (by design, see shamir.py) — the outer AES-GCM tag is what catches it: Outer AES-GCM decryption failed. Either the submitted shares are wrong/insufficient, the payload has been tampered with, or the manifest's drand fields don't match what was used at lock time."
+wrong_share,single_share_corrupted,4,10,8,Fail,Fail,True,"Shamir itself can't detect a wrong share (by design, see shamir.py) — the outer AES-GCM tag is what catches it: Outer AES-GCM decryption failed. Either the submitted shares are wrong/insufficient, the payload has been tampered with, or the manifest's drand fields don't match what was used at lock time."
+wrong_share,single_share_corrupted,5,10,8,Fail,Fail,True,"Shamir itself can't detect a wrong share (by design, see shamir.py) — the outer AES-GCM tag is what catches it: Outer AES-GCM decryption failed. Either the submitted shares are wrong/insufficient, the payload has been tampered with, or the manifest's drand fields don't match what was used at lock time."
+duplicate_share,same_index_twice,1,10,8,Fail,Fail,True,Two share files claim center_index 0 — duplicate submission.
+duplicate_share,same_index_twice,2,10,8,Fail,Fail,True,Two share files claim center_index 0 — duplicate submission.
+duplicate_share,same_index_twice,3,10,8,Fail,Fail,True,Two share files claim center_index 0 — duplicate submission.
+wrong_centre_id,ipfs_shard_swap,1,10,8,Fail,Fail,True,Shard bafy_shard_008_b092706a claims center_id='CENTER_009' but manifest says centers[8].id='CENTER_008'. Possible IPFS-level tampering.
+wrong_centre_id,ipfs_shard_swap,2,10,8,Fail,Fail,True,Shard bafy_shard_001_86d9e8d5 claims center_id='CENTER_002' but manifest says centers[1].id='CENTER_001'. Possible IPFS-level tampering.
+wrong_centre_id,ipfs_shard_swap,3,10,8,Fail,Fail,True,Shard bafy_shard_005_674ef001 claims center_id='CENTER_006' but manifest says centers[5].id='CENTER_005'. Possible IPFS-level tampering.
+wrong_centre_id,ipfs_shard_swap,4,10,8,Fail,Fail,True,Shard bafy_shard_003_5807cdaa claims center_id='CENTER_004' but manifest says centers[3].id='CENTER_003'. Possible IPFS-level tampering.
+wrong_centre_id,ipfs_shard_swap,5,10,8,Fail,Fail,True,Shard bafy_shard_005_0b533647 claims center_id='CENTER_006' but manifest says centers[5].id='CENTER_005'. Possible IPFS-level tampering.
+wrong_centre_id,coordinator_mislabeled_file,1,10,8,Fail,Fail,True,"Share from /tmp/vajra_exp07_i0a7zpwx/wrongid_1/share_7.json claims center_id='CENTER_008' at index 7, but manifest says centers[7].id='CENTER_007'. Refusing — possibly malicious."
+wrong_centre_id,coordinator_mislabeled_file,2,10,8,Fail,Fail,True,"Share from /tmp/vajra_exp07_i0a7zpwx/wrongid_2/share_7.json claims center_id='CENTER_008' at index 7, but manifest says centers[7].id='CENTER_007'. Refusing — possibly malicious."
+wrong_centre_id,coordinator_mislabeled_file,3,10,8,Fail,Fail,True,"Share from /tmp/vajra_exp07_i0a7zpwx/wrongid_3/share_7.json claims center_id='CENTER_008' at index 7, but manifest says centers[7].id='CENTER_007'. Refusing — possibly malicious."
+corrupted_ciphertext,shard_layer,1,10,8,Fail,Fail,True,"Cannot decrypt shard for center index 9 (id='CENTER_009'): Shard decryption failed. Either the private key does not match the public key the admin encrypted to, or the ciphertext has been tampered with on IPFS."
+corrupted_ciphertext,shard_layer,2,10,8,Fail,Fail,True,"Cannot decrypt shard for center index 2 (id='CENTER_002'): Shard decryption failed. Either the private key does not match the public key the admin encrypted to, or the ciphertext has been tampered with on IPFS."
+corrupted_ciphertext,shard_layer,3,10,8,Fail,Fail,True,"Cannot decrypt shard for center index 6 (id='CENTER_006'): Shard decryption failed. Either the private key does not match the public key the admin encrypted to, or the ciphertext has been tampered with on IPFS."
+corrupted_ciphertext,shard_layer,4,10,8,Fail,Fail,True,"Cannot decrypt shard for center index 3 (id='CENTER_003'): Shard decryption failed. Either the private key does not match the public key the admin encrypted to, or the ciphertext has been tampered with on IPFS."
+corrupted_ciphertext,shard_layer,5,10,8,Fail,Fail,True,"Cannot decrypt shard for center index 0 (id='CENTER_000'): Shard decryption failed. Either the private key does not match the public key the admin encrypted to, or the ciphertext has been tampered with on IPFS."
+corrupted_ciphertext,outer_payload_layer,1,10,8,Fail,Fail,True,"Outer AES-GCM decryption failed. Either the submitted shares are wrong/insufficient, the payload has been tampered with, or the manifest's drand fields don't match what was used at lock time."
+corrupted_ciphertext,outer_payload_layer,2,10,8,Fail,Fail,True,"Outer AES-GCM decryption failed. Either the submitted shares are wrong/insufficient, the payload has been tampered with, or the manifest's drand fields don't match what was used at lock time."
+corrupted_ciphertext,outer_payload_layer,3,10,8,Fail,Fail,True,"Outer AES-GCM decryption failed. Either the submitted shares are wrong/insufficient, the payload has been tampered with, or the manifest's drand fields don't match what was used at lock time."
+corrupted_ciphertext,outer_payload_layer,4,10,8,Fail,Fail,True,"Outer AES-GCM decryption failed. Either the submitted shares are wrong/insufficient, the payload has been tampered with, or the manifest's drand fields don't match what was used at lock time."
+corrupted_ciphertext,outer_payload_layer,5,10,8,Fail,Fail,True,"Outer AES-GCM decryption failed. Either the submitted shares are wrong/insufficient, the payload has been tampered with, or the manifest's drand fields don't match what was used at lock time."
+drand_relay_availability,0_of_4_relays_down,1,10,8,Success,Success,True,"4/4 relays reachable, need ≥2 to agree"
+drand_relay_availability,0_of_4_relays_down,2,10,8,Success,Success,True,"4/4 relays reachable, need ≥2 to agree"
+drand_relay_availability,0_of_4_relays_down,3,10,8,Success,Success,True,"4/4 relays reachable, need ≥2 to agree"
+drand_relay_availability,1_of_4_relays_down,1,10,8,Success,Success,True,"3/4 relays reachable, need ≥2 to agree"
+drand_relay_availability,1_of_4_relays_down,2,10,8,Success,Success,True,"3/4 relays reachable, need ≥2 to agree"
+drand_relay_availability,1_of_4_relays_down,3,10,8,Success,Success,True,"3/4 relays reachable, need ≥2 to agree"
+drand_relay_availability,2_of_4_relays_down,1,10,8,Success,Success,True,"2/4 relays reachable, need ≥2 to agree"
+drand_relay_availability,2_of_4_relays_down,2,10,8,Success,Success,True,"2/4 relays reachable, need ≥2 to agree"
+drand_relay_availability,2_of_4_relays_down,3,10,8,Success,Success,True,"2/4 relays reachable, need ≥2 to agree"
+drand_relay_availability,3_of_4_relays_down,1,10,8,Fail,Fail,True,"1/4 relays reachable, need ≥2 to agree"
+drand_relay_availability,3_of_4_relays_down,2,10,8,Fail,Fail,True,"1/4 relays reachable, need ≥2 to agree"
+drand_relay_availability,3_of_4_relays_down,3,10,8,Fail,Fail,True,"1/4 relays reachable, need ≥2 to agree"
+drand_relay_availability,4_of_4_relays_down,1,10,8,Fail,Fail,True,"0/4 relays reachable, need ≥2 to agree"
+drand_relay_availability,4_of_4_relays_down,2,10,8,Fail,Fail,True,"0/4 relays reachable, need ≥2 to agree"
+drand_relay_availability,4_of_4_relays_down,3,10,8,Fail,Fail,True,"0/4 relays reachable, need ≥2 to agree"
+drand_relay_availability,one_relay_disagrees,1,10,8,Success,Success,True,"3/4 relays agree on the real signature, 1 returns a different one — majority should still win"
+drand_relay_availability,one_relay_disagrees,2,10,8,Success,Success,True,"3/4 relays agree on the real signature, 1 returns a different one — majority should still win"
+drand_relay_availability,one_relay_disagrees,3,10,8,Success,Success,True,"3/4 relays agree on the real signature, 1 returns a different one — majority should still win"
