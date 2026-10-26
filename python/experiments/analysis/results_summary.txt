@@ -1,0 +1,92 @@
+== Experiment 1: RSW lock-duration scaling (results.csv has no header row)
+  rows=50 commits=['6fa1c63'] os=['Windows']
+  target= 1s n=10 mean=0.986 sd=0.056 min=0.827 max=1.008 mean/target=0.986 cv=0.057
+  target= 2s n=10 mean=1.958 sd=0.175 min=1.745 max=2.369 mean/target=0.979 cv=0.089
+  target= 4s n=10 mean=3.870 sd=0.302 min=3.313 max=4.300 mean/target=0.967 cv=0.078
+  target= 8s n=10 mean=8.060 sd=0.183 min=7.754 max=8.307 mean/target=1.008 cv=0.023
+  target=16s n=10 mean=15.999 sd=0.087 min=15.802 max=16.112 mean/target=1.000 cv=0.005
+
+== Experiment 2: cross-hardware RSW evaluation
+  rows=120 T_ops=['29463600']
+  M1  os='Windows 11' cpu='Intel64 Family 6 Model 183 Stepping 1, GenuineIntel' ram=15.69 rustc=rustc 1.98.1 n=10 time=20.42+-0.25 [20.13,20.95] cv=0.012 rate=1.443+-0.018 M/s
+  M2  os='Linux 6.18.44-99.149.amzn2023.x86_64' cpu='x86_64' ram=3.73 rustc=rustc 1.98.1 n=10 time=24.25+-0.27 [23.81,24.72] cv=0.011 rate=1.215+-0.014 M/s
+  M3  os='Darwin 25.5.0' cpu='arm' ram=8 rustc=rustc 1.98.0 n=10 time=30.66+-0.21 [30.44,31.08] cv=0.007 rate=0.961+-0.007 M/s
+  M4  os='Windows 11' cpu='AMD64 Family 23 Model 96 Stepping 1, AuthenticAMD' ram=15.42 rustc=rustc 1.95.0 n=10 time=31.28+-0.89 [30.75,33.74] cv=0.028 rate=0.943+-0.025 M/s
+  M5  os='Windows 11' cpu='ARMv8 (64-bit) Family 8 Model 1 Revision 201, Qualcomm Technologies Inc' ram=15.6 rustc=rustc 1.98.1 n=10 time=35.03+-0.32 [34.73,35.73] cv=0.009 rate=0.841+-0.008 M/s
+  M6  os='Windows 11' cpu='Intel64 Family 6 Model 154 Stepping 4, GenuineIntel' ram=15.68 rustc=rustc 1.98.1 n=10 time=40.48+-3.51 [35.96,45.98] cv=0.087 rate=0.733+-0.064 M/s
+  M7  os='Windows 10' cpu='Intel64 Family 6 Model 165 Stepping 2, GenuineIntel' ram=7.84 rustc=rustc 1.98.1 n=10 time=41.39+-3.93 [37.72,48.30] cv=0.095 rate=0.717+-0.065 M/s
+  M8  os='Windows 11' cpu='Intel64 Family 6 Model 142 Stepping 12, GenuineIntel' ram=7.83 rustc=rustc 1.98.1 n=10 time=58.24+-3.59 [52.70,64.42] cv=0.062 rate=0.508+-0.031 M/s
+  M9  os='Windows 11' cpu='AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD' ram=7.35 rustc=rustc 1.98.1 n=10 time=60.71+-0.66 [59.66,61.79] cv=0.011 rate=0.485+-0.005 M/s
+  M10 os='Windows 11' cpu='Intel64 Family 6 Model 142 Stepping 12, GenuineIntel' ram=11.85 rustc=rustc 1.98.1 n=10 time=62.05+-13.94 [42.64,80.03] cv=0.225 rate=0.499+-0.122 M/s
+  M11 os='Windows 10' cpu='Intel64 Family 6 Model 78 Stepping 3, GenuineIntel' ram=19.83 rustc=rustc 1.98.1 n=10 time=81.85+-7.89 [70.94,100.86] cv=0.096 rate=0.363+-0.032 M/s
+  M12 os='Linux 6.12.95+deb13-amd64' cpu='' ram=1.82 rustc=rustc 1.98.1 n=10 time=134.39+-0.23 [134.09,134.78] cv=0.002 rate=0.219+-0.000 M/s
+  fastest mean=20.425s slowest mean=134.385s time ratio=6.580 rate ratio=6.580
+
+== Experiment 3: threshold reconstruction (one attempt per (k, j))
+  rows=40 success values=Counter({'True': 40})
+  k= 3: shares_used tested=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10] matches_original for j=[3, 4, 5, 6, 7, 8, 9, 10]
+  k= 5: shares_used tested=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10] matches_original for j=[5, 6, 7, 8, 9, 10]
+  k= 8: shares_used tested=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10] matches_original for j=[8, 9, 10]
+  k=10: shares_used tested=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10] matches_original for j=[10]
+    note: value '0.006000699999276549z' parsed as '0.006000699999276549'
+  reconstruction call time: min=0.50 ms max=12.47 ms
+
+== Experiment 4: scaling across (n, k)
+  n=  5 k= 3 reps=10 share_gen_encryption_time_sec=2.2349+-0.0785 reconstruction_time_sec=0.0090+-0.0019 peak_memory_mb=4.0350+-0.0791 data_transferred_mb=2.0000+-0.0000 ipfs_objects=7.0000+-0.0000
+  n= 10 k= 5 reps=10 share_gen_encryption_time_sec=2.2041+-0.0334 reconstruction_time_sec=0.0145+-0.0005 peak_memory_mb=4.0100+-0.0000 data_transferred_mb=2.0000+-0.0000 ipfs_objects=12.0000+-0.0000
+  n= 10 k= 8 reps=10 share_gen_encryption_time_sec=2.2045+-0.0288 reconstruction_time_sec=0.0289+-0.0018 peak_memory_mb=4.0100+-0.0000 data_transferred_mb=2.0000+-0.0000 ipfs_objects=12.0000+-0.0000
+  n= 20 k=15 reps=10 share_gen_encryption_time_sec=2.2481+-0.0307 reconstruction_time_sec=0.0728+-0.0030 peak_memory_mb=4.0100+-0.0000 data_transferred_mb=2.0100+-0.0000 ipfs_objects=22.0000+-0.0000
+  n= 50 k=30 reps=10 share_gen_encryption_time_sec=2.3901+-0.0510 reconstruction_time_sec=0.2538+-0.0153 peak_memory_mb=4.0230+-0.0048 data_transferred_mb=2.0100+-0.0000 ipfs_objects=52.0000+-0.0000
+  n=100 k=60 reps=10 share_gen_encryption_time_sec=2.9022+-0.0510 reconstruction_time_sec=0.8939+-0.0316 peak_memory_mb=4.0600+-0.0000 data_transferred_mb=2.0200+-0.0000 ipfs_objects=102.0000+-0.0000
+
+== Experiment 5: manifest tampering
+  rows=50 repetitions=10
+  none (control)           -> Accept: 10
+  target_round tamper      -> Reject: 10
+  payload_cid tamper       -> Reject: 10
+  center_pubkey tamper     -> Reject: 10
+  shard_cid tamper         -> Reject: 10
+  passed=50/50
+
+== Experiment 6: center compromise
+  rows=440 matches_expected=Counter({'True': 440})
+  k= 3: successful decryptions per j=0..10 (of 10 reps): [0, 0, 0, 10, 10, 10, 10, 10, 10, 10, 10]
+  k= 5: successful decryptions per j=0..10 (of 10 reps): [0, 0, 0, 0, 0, 10, 10, 10, 10, 10, 10]
+  k= 8: successful decryptions per j=0..10 (of 10 reps): [0, 0, 0, 0, 0, 0, 0, 0, 10, 10, 10]
+  k=10: successful decryptions per j=0..10 (of 10 reps): [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10]
+  attempt time: mean=5.73 ms max=14.62 ms
+
+== Experiment 7: failure and fault injection
+  rows=65 passed=65
+  manifest_control_placement   baseline_all_up              reps=3 (expected,actual)={('Success', 'Success'): 3}
+  manifest_control_placement   primary_node_down            reps=3 (expected,actual)={('Fail', 'Fail'): 3}
+  shard_granularity_3nodes     node_1_down                  reps=2 (expected,actual)={('Fail', 'Fail'): 2}
+  shard_granularity_3nodes     node_2_down                  reps=1 (expected,actual)={('Fail', 'Fail'): 1}
+  shard_granularity_10nodes    0_nodes_down                 reps=3 (expected,actual)={('Success', 'Success'): 3}
+  shard_granularity_10nodes    1_nodes_down                 reps=3 (expected,actual)={('Success', 'Success'): 3}
+  shard_granularity_10nodes    2_nodes_down                 reps=3 (expected,actual)={('Success', 'Success'): 3}
+  shard_granularity_10nodes    3_nodes_down                 reps=3 (expected,actual)={('Fail', 'Fail'): 3}
+  wrong_share                  single_share_corrupted       reps=5 (expected,actual)={('Fail', 'Fail'): 5}
+  duplicate_share              same_index_twice             reps=3 (expected,actual)={('Fail', 'Fail'): 3}
+  wrong_centre_id              ipfs_shard_swap              reps=5 (expected,actual)={('Fail', 'Fail'): 5}
+  wrong_centre_id              coordinator_mislabeled_file  reps=3 (expected,actual)={('Fail', 'Fail'): 3}
+  corrupted_ciphertext         shard_layer                  reps=5 (expected,actual)={('Fail', 'Fail'): 5}
+  corrupted_ciphertext         outer_payload_layer          reps=5 (expected,actual)={('Fail', 'Fail'): 5}
+  drand_relay_availability     0_of_4_relays_down           reps=3 (expected,actual)={('Success', 'Success'): 3}
+  drand_relay_availability     1_of_4_relays_down           reps=3 (expected,actual)={('Success', 'Success'): 3}
+  drand_relay_availability     2_of_4_relays_down           reps=3 (expected,actual)={('Success', 'Success'): 3}
+  drand_relay_availability     3_of_4_relays_down           reps=3 (expected,actual)={('Fail', 'Fail'): 3}
+  drand_relay_availability     4_of_4_relays_down           reps=3 (expected,actual)={('Fail', 'Fail'): 3}
+  drand_relay_availability     one_relay_disagrees          reps=3 (expected,actual)={('Success', 'Success'): 3}
+  10-node outage sets: ['[]', '[]', '[]', '[4]', '[7]', '[7]', '[2, 5]', '[6, 7]', '[2, 9]', '[0, 5, 6]', '[1, 2, 4]', '[1, 2, 4]']
+
+== Experiment 8: end-to-end payload size
+  rows=30 backends={'simulated'} correct=Counter({'True': 30})
+    1 MiB reps=5 puzzle_generation=2.1052+-0.0343 lock_wall=0.0673+-0.0074 lock_keyderiv=0.0007+-0.0000 lock_encrypt=0.0066+-0.0004 outer_lock=0.0010+-0.0001 outer_decrypt=0.0014+-0.0007 solve_wall=1.9911+-0.0480 solve_parse=0.0029+-0.0017 solve_squaring=1.9254+-0.0469 solve_decrypt=0.0106+-0.0004 solve_write=0.0022+-0.0008 wall_clock_total=4.1894+-0.0461 other_stages=0.0233 sum_of_stage_means=4.1869 ipfs_bytes=2100322
+    5 MiB reps=5 puzzle_generation=2.1309+-0.0505 lock_wall=0.1172+-0.0150 lock_keyderiv=0.0007+-0.0000 lock_encrypt=0.0301+-0.0016 outer_lock=0.0059+-0.0009 outer_decrypt=0.0062+-0.0010 solve_wall=2.0856+-0.0472 solve_parse=0.0122+-0.0037 solve_squaring=1.9559+-0.0364 solve_decrypt=0.0530+-0.0035 solve_write=0.0049+-0.0013 wall_clock_total=4.3736+-0.0960 other_stages=0.0349 sum_of_stage_means=4.3686 ipfs_bytes=10488930
+   10 MiB reps=5 puzzle_generation=2.0951+-0.0238 lock_wall=0.1601+-0.0019 lock_keyderiv=0.0007+-0.0000 lock_encrypt=0.0569+-0.0006 outer_lock=0.0102+-0.0007 outer_decrypt=0.0104+-0.0005 solve_wall=2.1382+-0.0142 solve_parse=0.0195+-0.0009 solve_squaring=1.9380+-0.0129 solve_decrypt=0.1030+-0.0002 solve_write=0.0072+-0.0004 wall_clock_total=4.4420+-0.0212 other_stages=0.0423 sum_of_stage_means=4.4356 ipfs_bytes=20974690
+   25 MiB reps=5 puzzle_generation=2.0936+-0.0472 lock_wall=0.3659+-0.0034 lock_keyderiv=0.0007+-0.0000 lock_encrypt=0.1414+-0.0019 outer_lock=0.0200+-0.0008 outer_decrypt=0.0204+-0.0009 solve_wall=2.3905+-0.0221 solve_parse=0.0475+-0.0007 solve_squaring=1.9330+-0.0134 solve_decrypt=0.2551+-0.0012 solve_write=0.0360+-0.0131 wall_clock_total=4.9322+-0.0461 other_stages=0.0699 sum_of_stage_means=4.9199 ipfs_bytes=52431971
+   50 MiB reps=5 puzzle_generation=2.1060+-0.0387 lock_wall=0.6928+-0.0105 lock_keyderiv=0.0007+-0.0000 lock_encrypt=0.2836+-0.0065 outer_lock=0.0395+-0.0019 outer_decrypt=0.0400+-0.0012 solve_wall=2.8040+-0.0197 solve_parse=0.0950+-0.0008 solve_squaring=1.9384+-0.0079 solve_decrypt=0.5121+-0.0043 solve_write=0.0611+-0.0041 wall_clock_total=5.7483+-0.0667 other_stages=0.1226 sum_of_stage_means=5.7255 ipfs_bytes=104860771
+  100 MiB reps=5 puzzle_generation=2.1036+-0.0368 lock_wall=1.3548+-0.0411 lock_keyderiv=0.0007+-0.0000 lock_encrypt=0.5630+-0.0035 outer_lock=0.0792+-0.0062 outer_decrypt=0.0809+-0.0066 solve_wall=3.7086+-0.0375 solve_parse=0.2164+-0.0087 solve_squaring=1.9464+-0.0153 solve_decrypt=1.0314+-0.0123 solve_write=0.1389+-0.0064 wall_clock_total=7.4483+-0.0743 other_stages=0.2402 sum_of_stage_means=7.4072 ipfs_bytes=209718370
+  squaring over all 30 runs: mean=1.9395 sd=0.0259 min=1.8744 max=2.0132 range=0.1388
+
