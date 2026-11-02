@@ -1,98 +1,128 @@
-import csv
-import json
-import os.path
-from pathlib import Path
-import platform
-import time
-import subprocess
+"""Experiment 2 — solve the same RSW puzzle on this machine and record the host.
 
-import psutil
+Every participating machine must use the SAME puzzle.json and locked.json
+(copy both into this directory). The puzzle file records the calibration
+speed (ref_squarings_per_sec); the requested lock duration is
+t_ops / ref_squarings_per_sec (see analyze_against_puzzle.py).
+
+Each run records:
+  • solve_time_sec      wall time of the whole `vajra solve` process
+                        (the quantity reported in the paper, Table III)
+  • squaring_sec        the sequential squaring alone (VAJRA_TIMING)
+  • the CPU model name, core counts, power plan or frequency governor,
+    AC/battery state, EC2 instance type (common.host_info), and the CPU
+    frequency, load and temperature sampled just before and after the run
+    (common.runtime_state).
+
+Usage:
+  python run_hardware_bench.py                    # 10 runs → raw_results_v2.csv
+  python run_hardware_bench.py --runs 10 --note "High performance plan, AC power"
+
+The published raw_results.csv (first run of this experiment) is left untouched;
+new runs go to --out (default raw_results_v2.csv) because the columns differ.
+"""
+
+import argparse
+import csv
+import hashlib
+import json
+import os
+import subprocess
+import sys
+import tempfile
+import time
+from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-REPO_ROOT = SCRIPT_DIR.parents[2]
+sys.path.insert(0, str(SCRIPT_DIR.parent))
 
-BINARY_NAME = 'vajra.exe' if platform.system() == 'Windows' else 'vajra'
-RUST_BINARY = str(REPO_ROOT / 'rust' / 'target' / 'release' / BINARY_NAME)
+from common import find_vajra_binary, host_info, runtime_state  # noqa: E402
 
-PUZZLE_FILE = SCRIPT_DIR / 'puzzle.json'
-CSV_FILE = SCRIPT_DIR / 'raw_results.csv'
-
-
-def solve_puzzle(t_ops):
-    """Invoke the Rust puzzle solver for the requested operation count."""
-    subprocess.run(
-        [RUST_BINARY, '--solve', str(t_ops)],
-        capture_output=True
-    )
+PUZZLE_FILE = SCRIPT_DIR / "puzzle.json"
+LOCKED_FILE = SCRIPT_DIR / "locked.json"
 
 
-def get_system_info():
-    """Describe the host so timings can be compared across hardware."""
-    try:
-        rustc_version = subprocess.check_output(['rustc', '--version']).decode().strip()
-    except Exception:
-        rustc_version = 'Unknown'
-
-    return {
-        'Machine': platform.node(),
-        'OS': platform.system() + ' ' + platform.release(),
-        'CPU': platform.processor(),
-        'RAM_GB': round(psutil.virtual_memory().total / (1024 ** 3), 2),
-        'Rust Version': rustc_version
-    }
+def file_sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def run_hardware_bench(repetition=5):
-    """Measure repeated solves of the reference puzzle on the current host.
+def solve_once(binary: Path, puzzle: Path, locked: Path, aad_hex: str) -> tuple[float, float | None]:
+    """Run `vajra solve` once; return (process wall seconds, squaring seconds)."""
+    with tempfile.TemporaryDirectory(prefix="vajra_exp02_") as tmp:
+        out = Path(tmp) / "exam.pdf"
+        env = {**os.environ, "VAJRA_TIMING": "1"}
+        t0 = time.perf_counter()
+        proc = subprocess.run(
+            [str(binary), "solve", "--puzzle", str(puzzle), "--locked", str(locked),
+             "--output", str(out), "--aad-hex", aad_hex],
+            capture_output=True, text=True, encoding="utf-8", errors="replace", env=env,
+        )
+        elapsed = time.perf_counter() - t0
+    if proc.returncode != 0:
+        raise RuntimeError(f"vajra solve failed: {proc.stderr.strip()[-400:]}")
+    squaring = None
+    for line in proc.stderr.splitlines():
+        if line.startswith("VAJRA_TIMING solve"):
+            for pair in line.split()[2:]:
+                key, _, val = pair.partition("=")
+                if key == "squaring":
+                    squaring = float(val)
+    return elapsed, squaring
 
-    Returns an empty list when the puzzle or compiled solver is unavailable.
-    A failed solver process raises ``subprocess.CalledProcessError``.
-    """
-    if not PUZZLE_FILE.exists():
-        print(f'Error: {PUZZLE_FILE} not found. Please copy the reference puzzle to this directory.')
-        return []
 
-    if not os.path.exists(RUST_BINARY):
-        print(f'Error: Compiled binary not found at {RUST_BINARY}')
-        print("Build it with: cargo build --release (inside the rust/ directory)")
-        return []
+def main() -> None:
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--runs", type=int, default=10)
+    ap.add_argument("--puzzle", type=Path, default=PUZZLE_FILE)
+    ap.add_argument("--locked", type=Path, default=LOCKED_FILE)
+    ap.add_argument("--aad-hex", default="", help="AAD used when locked.json was created (default none)")
+    ap.add_argument("--note", default="", help="free text, e.g. power plan chosen for this repeat")
+    ap.add_argument("--out", type=Path, default=SCRIPT_DIR / "raw_results_v2.csv")
+    args = ap.parse_args()
 
-    sys_info = get_system_info()
-    results = []
+    for f in (args.puzzle, args.locked):
+        if not f.exists():
+            raise SystemExit(f"{f} not found. Copy the shared puzzle.json and locked.json here.")
+    binary = find_vajra_binary()
+    puzzle = json.loads(args.puzzle.read_text())
+    t_ops = int(puzzle["t_ops"])
 
-    with open(PUZZLE_FILE) as fp:
-        puzzle_data = json.load(fp)
-        t_ops = puzzle_data['t_ops']
+    static = host_info()
+    print(f"Host: {static['Machine']} — {static['CPU_model'] or static['CPU']}")
+    print(f"Puzzle: t_ops={t_ops}, ref_squarings_per_sec={puzzle.get('ref_squarings_per_sec')}, "
+          f"lock_seconds={puzzle.get('lock_seconds', 'not recorded')}")
 
-    for i in range(repetition):
-        start_time = time.perf_counter()
-
-        subprocess.run([RUST_BINARY, 'solve'], check=True)
-
-        elapsed_time = time.perf_counter() - start_time
-
-        results.append({
-            **sys_info,
-            'T_ops': t_ops,
-            'Run': i + 1,
-            'solve_time_sec': round(elapsed_time, 4),
-            'squarings_sec': round(t_ops / elapsed_time, 2) if elapsed_time > 0 else 0
+    rows = []
+    for i in range(1, args.runs + 1):
+        state = runtime_state()
+        wall, squaring = solve_once(binary, args.puzzle, args.locked, args.aad_hex)
+        state_after = runtime_state()
+        rows.append({
+            **static,
+            "T_ops": t_ops,
+            "ref_squarings_per_sec": puzzle.get("ref_squarings_per_sec", ""),
+            "lock_seconds": puzzle.get("lock_seconds", ""),
+            "puzzle_sha256": file_sha256(args.puzzle),
+            "Run": i,
+            "solve_time_sec": round(wall, 4),
+            "squaring_sec": round(squaring, 4) if squaring is not None else "",
+            "squarings_sec": round(t_ops / wall, 2) if wall > 0 else 0,
+            **{f"before_{k}": v for k, v in state.items()},
+            **{f"after_{k}": v for k, v in state_after.items()},
+            "note": args.note,
         })
+        sq = f"{squaring:.2f} s" if squaring is not None else "n/a"
+        print(f"  run {i}/{args.runs}: {wall:.2f} s (squaring {sq}, "
+              f"{state['cpu_mhz_now']} MHz before)")
 
-    return results
+    exists = args.out.exists()
+    with open(args.out, "a", newline="", encoding="utf-8") as fp:
+        writer = csv.DictWriter(fp, fieldnames=list(rows[0].keys()))
+        if not exists:
+            writer.writeheader()
+        writer.writerows(rows)
+    print(f"Recorded {len(rows)} runs to {args.out}")
 
-if __name__ == '__main__':
-    print(f"Running hardware benchmark on {platform.node()} ({platform.system()})...")
 
-    experiment_data = run_hardware_bench(10)
-
-    if experiment_data:
-        file_exists = CSV_FILE.exists()
-
-        with open(CSV_FILE, 'a', newline='') as fp:
-            writer = csv.DictWriter(fp, fieldnames=experiment_data[0].keys())
-            if not file_exists:
-                writer.writeheader()
-            writer.writerows(experiment_data)
-
-        print(f"Recorded {len(experiment_data)} runs to {CSV_FILE}")
+if __name__ == "__main__":
+    main()
