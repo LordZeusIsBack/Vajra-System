@@ -118,3 +118,133 @@ pub fn decrypt(k: &BigUint, locked: &LockedPayload, aad: &[u8]) -> Result<Vec<u8
                 .to_string()
         })
 }
+
+// ─── Tests ───────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn key(v: u64) -> BigUint {
+        BigUint::from(v)
+    }
+
+    fn flip_hex_byte(s: &str, idx: usize) -> String {
+        let mut b = hex::decode(s).unwrap();
+        b[idx] ^= 0x01;
+        hex::encode(b)
+    }
+
+    #[test]
+    fn round_trip_with_and_without_aad() {
+        let aad = [0xAB_u8; 32];
+        for msg in [&b""[..], b"%PDF-1.4 tiny", &[0u8; 100_000][..]] {
+            let locked = encrypt(&key(42), msg, &aad);
+            assert_eq!(decrypt(&key(42), &locked, &aad).unwrap(), msg);
+
+            let locked = encrypt(&key(42), msg, &[]);
+            assert_eq!(decrypt(&key(42), &locked, &[]).unwrap(), msg);
+        }
+    }
+
+    #[test]
+    fn nonce_is_fresh_for_each_encryption() {
+        let a = encrypt(&key(7), b"same", &[]);
+        let b = encrypt(&key(7), b"same", &[]);
+        assert_ne!(a.nonce, b.nonce);
+        assert_ne!(a.ciphertext, b.ciphertext);
+    }
+
+    #[test]
+    fn wrong_key_is_rejected() {
+        let locked = encrypt(&key(42), b"exam", &[]);
+        assert!(decrypt(&key(43), &locked, &[]).is_err());
+    }
+
+    #[test]
+    fn aad_mismatch_is_rejected() {
+        let aad = [1u8; 32];
+        let mut other = aad;
+        other[31] ^= 0x80;
+        let locked = encrypt(&key(42), b"exam", &aad);
+        assert!(decrypt(&key(42), &locked, &other).is_err());
+        assert!(
+            decrypt(&key(42), &locked, &[]).is_err(),
+            "dropping the AAD must fail"
+        );
+
+        let locked_no_aad = encrypt(&key(42), b"exam", &[]);
+        assert!(
+            decrypt(&key(42), &locked_no_aad, &aad).is_err(),
+            "adding an AAD must fail"
+        );
+    }
+
+    #[test]
+    fn tampered_ciphertext_tag_or_nonce_is_rejected() {
+        let locked = encrypt(&key(42), b"exam paper bytes", &[9u8; 32]);
+        let ct_len = hex::decode(&locked.ciphertext).unwrap().len();
+
+        let body = LockedPayload {
+            nonce: locked.nonce.clone(),
+            ciphertext: flip_hex_byte(&locked.ciphertext, 0),
+        };
+        assert!(
+            decrypt(&key(42), &body, &[9u8; 32]).is_err(),
+            "flipped ciphertext byte"
+        );
+
+        let tag = LockedPayload {
+            nonce: locked.nonce.clone(),
+            ciphertext: flip_hex_byte(&locked.ciphertext, ct_len - 1),
+        };
+        assert!(
+            decrypt(&key(42), &tag, &[9u8; 32]).is_err(),
+            "flipped tag byte"
+        );
+
+        let nonce = LockedPayload {
+            nonce: flip_hex_byte(&locked.nonce, 0),
+            ciphertext: locked.ciphertext.clone(),
+        };
+        assert!(
+            decrypt(&key(42), &nonce, &[9u8; 32]).is_err(),
+            "flipped nonce byte"
+        );
+
+        let mut truncated = hex::decode(&locked.ciphertext).unwrap();
+        truncated.truncate(ct_len - 1);
+        let short = LockedPayload {
+            nonce: locked.nonce.clone(),
+            ciphertext: hex::encode(truncated),
+        };
+        assert!(
+            decrypt(&key(42), &short, &[9u8; 32]).is_err(),
+            "truncated tag"
+        );
+    }
+
+    #[test]
+    fn malformed_encoding_is_rejected() {
+        let locked = encrypt(&key(42), b"exam", &[]);
+        let short_nonce = LockedPayload {
+            nonce: "00".repeat(8),
+            ciphertext: locked.ciphertext.clone(),
+        };
+        assert!(decrypt(&key(42), &short_nonce, &[])
+            .unwrap_err()
+            .contains("12 bytes"));
+        let bad_hex = LockedPayload {
+            nonce: locked.nonce.clone(),
+            ciphertext: "not hex".into(),
+        };
+        assert!(decrypt(&key(42), &bad_hex, &[]).is_err());
+    }
+
+    #[test]
+    fn key_derivation_is_sha256_of_big_endian_k() {
+        let k = BigUint::from(0x0102_0304u32);
+        let expected: [u8; 32] = Sha256::digest([1u8, 2, 3, 4]).into();
+        assert_eq!(derive_aes_key(&k), expected);
+    }
+}
