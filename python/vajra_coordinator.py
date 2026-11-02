@@ -114,6 +114,7 @@ async def coordinate(
     ipfs: IPFSClient,
     *,
     skip_drand_check: bool = False,
+    stage_times: dict | None = None,
 ) -> bytes:
     """Collect share files, verify, combine, decrypt, solve. Returns the PDF.
 
@@ -202,6 +203,7 @@ async def coordinate(
     return await combine_shares_to_pdf(
         manifest, plaintext_shares, ipfs, vajra_binary,
         skip_drand_check=skip_drand_check,
+        stage_times=stage_times,
     )
 
 
