@@ -1,167 +1,143 @@
+import argparse
+import asyncio
 import csv
 import json
-import os
-import secrets
+import sys
 import time
 import tracemalloc
 from pathlib import Path
-import subprocess
-import sys
-import tempfile
 
-script_dir = Path(__file__).resolve().parent
-python_dir = script_dir.parent.parent
-repo_root = python_dir.parent
+SCRIPT_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(SCRIPT_DIR.parent))
 
-os.environ['MANIFEST_HMAC_SECRET'] = secrets.token_hex(32)
-
-vajra_exe = repo_root / "rust" / "target" / "release" / "vajra.exe"
-os.environ["VAJRA_BIN"] = str(vajra_exe)
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
-
-from lock_pipeline import run_vajra_pipeline
-from centers import CenterRegistration, EncryptedShard, decrypt_share_with_privkey
-from shamir import reconstruct as shamir_reconstruct
+import common
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
+import config
+from centers import EncryptedShard, bulk_generate, decrypt_share_with_privkey
+from lock_pipeline import run_vajra_pipeline
+from lock_publish import publish_locked_exam
+from manifest import verify as verify_manifest
+from shamir import reconstruct as shamir_reconstruct
 
-def generate_mock_centers(n: int) -> list[dict]:
-    """Generate temporary center keypairs and return their records sorted by ID.
+CONFIGURATIONS = [(5, 3), (10, 5), (10, 8), (20, 15), (50, 30), (100, 60)]
+MIB = 1024 * 1024
 
-    The process exits with status 1 if the key-generation subprocess fails.
-    """
-    keys = []
 
-    # Resolve the absolute path to the main python/ directory
-    python_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
-    keygen_script = os.path.join(python_dir, 'vajra_keygen.py')
+async def one_run(n: int, k: int, registry, keypairs, ipfs, pdf_payload: bytes) -> dict:
+    stages: dict = {}
+    tracemalloc.start()
 
-    # Force UTF-8 encoding INSIDE the subprocess
-    custom_env = os.environ.copy()
-    custom_env["PYTHONIOENCODING"] = "utf-8"
+    t0 = time.perf_counter()
+    (puzzle_params, double_locked, encrypted_shards, nonce_hex,
+     drand_info, centers_meta) = run_vajra_pipeline(
+        pdf_bytes=pdf_payload, exam_start_seconds=1, n=n, k=k,
+        centers=registry, timings=stages,
+    )
+    lock_total = time.perf_counter() - t0
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        print(f'Generating {n} center keypairs for scaling test')
+    pub: dict = {}
+    t0 = time.perf_counter()
+    manifest_cid, _ = await publish_locked_exam(
+        ipfs, n=n, k=k, puzzle_params=puzzle_params, double_locked=double_locked,
+        encrypted_shards=encrypted_shards, nonce_hex=nonce_hex, drand_info=drand_info,
+        centers_meta=centers_meta, stats=pub,
+    )
+    publish_sec = time.perf_counter() - t0
 
-        try:
-            subprocess.run(
-                [
-                    sys.executable, keygen_script, 'bulk',
-                    '--n', str(n),
-                    '--out-dir', tmpdir,
-                    '--force'
-                ],
-                check=True,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                cwd=python_dir,
-                env=custom_env  # Pass the modified environment here
-            )
-        except subprocess.CalledProcessError as e:
-            print(f"Error running vajra_keygen.py (Exit {e.returncode})")
-            print(f"STDOUT:\n{e.stdout}")
-            print(f"STDERR:\n{e.stderr}")
-            sys.exit(1)
+    # Fetch what k centers and the coordinator need.
+    t0 = time.perf_counter()
+    manifest_bytes = await ipfs.cat(manifest_cid, node_index=0)
+    manifest = json.loads(manifest_bytes)
+    if not verify_manifest(manifest):
+        raise RuntimeError("fetched manifest failed HMAC verification")
+    payload = await ipfs.cat(manifest["payload_cid"], node_index=0)
+    shard_blobs = []
+    for i in range(k):
+        entry = manifest["shard_cids"][i]
+        shard_blobs.append(await ipfs.cat(entry["cid"], node_index=entry["node_index"]))
+    fetch_sec = time.perf_counter() - t0
+    bytes_fetched = len(manifest_bytes) + len(payload) + sum(len(b) for b in shard_blobs)
 
-        for key_file in Path(tmpdir).glob('*.json'):
-            if key_file.name == 'centers.json':
-                continue
-
-            with open(key_file, encoding="utf-8") as fp:
-                keys.append(json.load(fp))
-
-    keys.sort(key=lambda k: k.get('id'))
-    return keys
-
-def run_scaling_experiment():
-    """Benchmark locking and outer-layer reconstruction as center counts scale."""
-    configurations = [
-        {"n": 5, "k": 3},
-        {"n": 10, "k": 5},
-        {"n": 10, "k": 8},
-        {"n": 20, "k": 15},
-        {"n": 50, "k": 30},
-        {"n": 100, "k": 60}
+    t0 = time.perf_counter()
+    plaintext_shares = [
+        decrypt_share_with_privkey(EncryptedShard.from_dict(json.loads(blob)), keypairs[i][1])
+        for i, blob in enumerate(shard_blobs)
     ]
+    t1 = time.perf_counter()
+    data_key = shamir_reconstruct(plaintext_shares, expected_threshold=k)
+    t2 = time.perf_counter()
+    AESGCM(data_key).decrypt(bytes.fromhex(manifest["nonce"]), payload,
+                             associated_data=bytes.fromhex(drand_info["aad_hex"]))
+    t3 = time.perf_counter()
 
-    repetitions = 10
-    results = []
+    _, python_peak = tracemalloc.get_traced_memory()
+    tracemalloc.stop()
 
-    max_n = max(cfg["n"] for cfg in configurations)
-    all_keys = generate_mock_centers(max_n)
+    calibration = stages.get("generate_calibration_sec", 0.0)
+    return {
+        "lock_pipeline_sec": lock_total,
+        "lock_pipeline_excl_calibration_sec": lock_total - calibration,
+        **{k_: v for k_, v in stages.items() if k_.endswith("_sec")},
+        "publish_sec": publish_sec,
+        "objects_created": pub["objects_created"],
+        "objects_per_node": json.dumps(pub["objects_per_node"]),
+        "bytes_uploaded_mb": pub["bytes_uploaded"] / MIB,
+        "fetch_sec": fetch_sec,
+        "bytes_fetched_mb": bytes_fetched / MIB,
+        "center_decrypt_sec": t1 - t0,
+        "shamir_combine_sec": t2 - t1,
+        "outer_decrypt_sec": t3 - t2,
+        "reconstruction_sec": t3 - t0,
+        "python_peak_mb": python_peak / MIB,
+        "generate_peak_rss_mb": stages.get("generate_peak_rss_bytes", 0) / MIB,
+        "lock_peak_rss_mb": stages.get("lock_peak_rss_bytes", 0) / MIB,
+        "child_memory_method": stages.get("child_memory_method", ""),
+    }
 
-    pdf_payload = b"%PDF-1.4\n" + (b"\x00" * (1024 * 1024 - 9))
 
-    for config in configurations:
-        n = config.get('n')
-        k = config.get('k')
-        print(f'Testing configuration with n={n} and k={k}')
+async def main() -> None:
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    common.add_ipfs_arguments(ap)
+    ap.add_argument("--reps", type=int, default=10)
+    ap.add_argument("--nodes", type=int, default=3, help="shard nodes (default 3, as in the service)")
+    ap.add_argument("--configs", default=",".join(f"{n}:{k}" for n, k in CONFIGURATIONS),
+                    help="comma-separated n:k pairs")
+    ap.add_argument("--out", type=Path, default=SCRIPT_DIR / "raw_results_stages.csv")
+    args = ap.parse_args()
 
-        active_keys = all_keys[:n]
-        centers = [
-            CenterRegistration(id=k_dict['id'], pubkey=k_dict['pubkey'])
-            for k_dict in active_keys
-        ]
+    config.settings.vajra_binary = str(common.find_vajra_binary())
+    configs = [tuple(int(x) for x in pair.split(":")) for pair in args.configs.split(",")]
+    ipfs = await common.make_backend(args, node_count=args.nodes)
+    host = common.host_info()
+    print(f"Backend: {ipfs.describe()}  host: {host['CPU_model'] or host['CPU']}")
 
-        for run in range(repetitions):
-            tracemalloc.start()
+    max_n = max(n for n, _ in configs)
+    registry_all, keypairs_all = bulk_generate(max_n)
+    pdf_payload = b"%PDF-1.4\n" + (b"\x00" * (MIB - 9))
 
-            start_gen = time.perf_counter()
+    rows = []
+    for n, k in configs:
+        print(f"Testing n={n}, k={k}")
+        for run in range(1, args.reps + 1):
+            metrics = await one_run(n, k, registry_all[:n], keypairs_all[:n], ipfs, pdf_payload)
+            rows.append({"n": n, "k": k, "run": run, **ipfs.describe(),
+                         **{key: (round(v, 6) if isinstance(v, float) else v)
+                            for key, v in metrics.items()},
+                         "cpu_model": host["CPU_model"]})
+            print(f"  run {run}: lock {metrics['lock_pipeline_sec']:.3f}s "
+                  f"(calibration {metrics.get('generate_calibration_sec', 0):.3f}s), "
+                  f"objects {metrics['objects_created']}, recon {metrics['reconstruction_sec']*1000:.1f} ms")
 
-            puzzle_params, double_locked, encrypted_shards, nonce_hex, drand_info, centers_meta = run_vajra_pipeline(
-                pdf_bytes=pdf_payload,
-                exam_start_seconds=1,
-                n=n,
-                k=k,
-                centers=centers
-            )
-
-            gen_time = time.perf_counter() - start_gen
-
-            start_recon = time.perf_counter()
-
-            plaintext_shares = []
-            for i in range(k):
-                enc_shard = EncryptedShard.from_dict(encrypted_shards[i])
-                privkey_hex = active_keys[i]['privkey']
-                share = decrypt_share_with_privkey(enc_shard, privkey_hex)
-                plaintext_shares.append(share)
-
-            data_key = shamir_reconstruct(plaintext_shares, expected_threshold=k)
-
-            aad_bytes = bytes.fromhex(drand_info["aad_hex"])
-            nonce = bytes.fromhex(nonce_hex)
-            locked_bytes = AESGCM(data_key).decrypt(nonce, double_locked, associated_data=aad_bytes)
-
-            recon_time = time.perf_counter() - start_recon
-
-            current_mem, peak_mem = tracemalloc.get_traced_memory()
-            tracemalloc.stop()
-
-            shards_bytes = sum(len(json.dumps(s).encode('utf-8')) for s in encrypted_shards)
-            data_transferred = len(double_locked) + shards_bytes + len(json.dumps(puzzle_params).encode('utf-8'))
-
-            results.append({
-                "n": n,
-                "k": k,
-                "run": run + 1,
-                "share_gen_encryption_time_sec": round(gen_time, 4),
-                "reconstruction_time_sec": round(recon_time, 4),
-                "peak_memory_mb": round(peak_mem / (1024 * 1024), 2),
-                "data_transferred_mb": round(data_transferred / (1024 * 1024), 2),
-                "ipfs_objects": n + 2  # n shards + 1 payload + 1 puzzle[cite: 3]
-            })
-
-    csv_file = Path(__file__).parent / "raw_results.csv"
-    with open(csv_file, mode='w', newline='') as f:
-        writer = csv.DictWriter(f, fieldnames=results[0].keys())
+    fields: list[str] = []
+    for row in rows:
+        fields += [key for key in row if key not in fields]
+    with open(args.out, "w", newline="", encoding="utf-8") as fp:
+        writer = csv.DictWriter(fp, fieldnames=fields, restval="")
         writer.writeheader()
-        writer.writerows(results)
+        writer.writerows(rows)
+    print(f"\nExperiment complete. Raw data saved to {args.out}")
 
-    print(f"\nExperiment complete. Raw data saved to {csv_file}")
 
 if __name__ == "__main__":
-    run_scaling_experiment()
+    asyncio.run(main())
