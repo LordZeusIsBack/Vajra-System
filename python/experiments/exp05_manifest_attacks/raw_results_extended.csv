@@ -1,0 +1,251 @@
+repetition,case,modified_field,resigned_with_hmac_key,shares_submitted,hmac_verify_accepts,expected_result,actual_result,stopped_at,passed
+1,control (unmodified),n/a,False,8,True,Accepted (original paper),Accepted (original paper),completed,True
+1,"drand.target_round changed, original HMAC kept",drand.target_round,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+1,"drand.publish_time changed, original HMAC kept",drand.publish_time,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+1,"drand.chain_hash changed, original HMAC kept",drand.chain_hash,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+1,"payload_cid changed, original HMAC kept",payload_cid,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+1,"puzzle_cid changed, original HMAC kept",puzzle_cid,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+1,"nonce changed, original HMAC kept",nonce,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+1,"n changed, original HMAC kept",n,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+1,"k changed, original HMAC kept",k,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+1,"exam_id changed, original HMAC kept",exam_id,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+1,"version changed, original HMAC kept",version,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+1,"locked_at changed, original HMAC kept",locked_at,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+1,"centers[0].id changed, original HMAC kept",centers[0].id,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+1,"centers[0].pubkey changed, original HMAC kept",centers[0].pubkey,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+1,"shard_cids[0].cid changed, original HMAC kept",shard_cids[0].cid,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+1,"shard_cids[0].node_index changed, original HMAC kept",shard_cids[0].node_index,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+1,hmac removed,hmac,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+1,drand.target_round changed and re-signed,drand.target_round,True,8,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+1,drand.chain_hash changed and re-signed,drand.chain_hash,True,8,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+1,nonce changed and re-signed,nonce,True,8,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+1,drand.publish_time changed and re-signed,drand.publish_time,True,8,True,Accepted (original paper),Accepted (original paper),completed,True
+1,k changed and re-signed,k,True,7,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+1,n changed and re-signed,n,True,8,True,Rejected: manifest shape,Rejected: manifest shape,center 0,True
+1,payload_cid changed and re-signed,payload_cid,True,8,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+1,"full substitution, re-signed",all object references,True,8,True,Forged paper produced,Forged paper produced,completed,True
+2,control (unmodified),n/a,False,8,True,Accepted (original paper),Accepted (original paper),completed,True
+2,"drand.target_round changed, original HMAC kept",drand.target_round,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+2,"drand.publish_time changed, original HMAC kept",drand.publish_time,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+2,"drand.chain_hash changed, original HMAC kept",drand.chain_hash,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+2,"payload_cid changed, original HMAC kept",payload_cid,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+2,"puzzle_cid changed, original HMAC kept",puzzle_cid,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+2,"nonce changed, original HMAC kept",nonce,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+2,"n changed, original HMAC kept",n,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+2,"k changed, original HMAC kept",k,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+2,"exam_id changed, original HMAC kept",exam_id,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+2,"version changed, original HMAC kept",version,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+2,"locked_at changed, original HMAC kept",locked_at,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+2,"centers[0].id changed, original HMAC kept",centers[0].id,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+2,"centers[0].pubkey changed, original HMAC kept",centers[0].pubkey,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+2,"shard_cids[0].cid changed, original HMAC kept",shard_cids[0].cid,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+2,"shard_cids[0].node_index changed, original HMAC kept",shard_cids[0].node_index,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+2,hmac removed,hmac,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+2,drand.target_round changed and re-signed,drand.target_round,True,8,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+2,drand.chain_hash changed and re-signed,drand.chain_hash,True,8,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+2,nonce changed and re-signed,nonce,True,8,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+2,drand.publish_time changed and re-signed,drand.publish_time,True,8,True,Accepted (original paper),Accepted (original paper),completed,True
+2,k changed and re-signed,k,True,7,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+2,n changed and re-signed,n,True,8,True,Rejected: manifest shape,Rejected: manifest shape,center 0,True
+2,payload_cid changed and re-signed,payload_cid,True,8,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+2,"full substitution, re-signed",all object references,True,8,True,Forged paper produced,Forged paper produced,completed,True
+3,control (unmodified),n/a,False,8,True,Accepted (original paper),Accepted (original paper),completed,True
+3,"drand.target_round changed, original HMAC kept",drand.target_round,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+3,"drand.publish_time changed, original HMAC kept",drand.publish_time,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+3,"drand.chain_hash changed, original HMAC kept",drand.chain_hash,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+3,"payload_cid changed, original HMAC kept",payload_cid,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+3,"puzzle_cid changed, original HMAC kept",puzzle_cid,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+3,"nonce changed, original HMAC kept",nonce,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+3,"n changed, original HMAC kept",n,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+3,"k changed, original HMAC kept",k,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+3,"exam_id changed, original HMAC kept",exam_id,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+3,"version changed, original HMAC kept",version,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+3,"locked_at changed, original HMAC kept",locked_at,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+3,"centers[0].id changed, original HMAC kept",centers[0].id,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+3,"centers[0].pubkey changed, original HMAC kept",centers[0].pubkey,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+3,"shard_cids[0].cid changed, original HMAC kept",shard_cids[0].cid,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+3,"shard_cids[0].node_index changed, original HMAC kept",shard_cids[0].node_index,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+3,hmac removed,hmac,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+3,drand.target_round changed and re-signed,drand.target_round,True,8,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+3,drand.chain_hash changed and re-signed,drand.chain_hash,True,8,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+3,nonce changed and re-signed,nonce,True,8,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+3,drand.publish_time changed and re-signed,drand.publish_time,True,8,True,Accepted (original paper),Accepted (original paper),completed,True
+3,k changed and re-signed,k,True,7,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+3,n changed and re-signed,n,True,8,True,Rejected: manifest shape,Rejected: manifest shape,center 0,True
+3,payload_cid changed and re-signed,payload_cid,True,8,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+3,"full substitution, re-signed",all object references,True,8,True,Forged paper produced,Forged paper produced,completed,True
+4,control (unmodified),n/a,False,8,True,Accepted (original paper),Accepted (original paper),completed,True
+4,"drand.target_round changed, original HMAC kept",drand.target_round,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+4,"drand.publish_time changed, original HMAC kept",drand.publish_time,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+4,"drand.chain_hash changed, original HMAC kept",drand.chain_hash,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+4,"payload_cid changed, original HMAC kept",payload_cid,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+4,"puzzle_cid changed, original HMAC kept",puzzle_cid,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+4,"nonce changed, original HMAC kept",nonce,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+4,"n changed, original HMAC kept",n,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+4,"k changed, original HMAC kept",k,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+4,"exam_id changed, original HMAC kept",exam_id,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+4,"version changed, original HMAC kept",version,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+4,"locked_at changed, original HMAC kept",locked_at,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+4,"centers[0].id changed, original HMAC kept",centers[0].id,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+4,"centers[0].pubkey changed, original HMAC kept",centers[0].pubkey,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+4,"shard_cids[0].cid changed, original HMAC kept",shard_cids[0].cid,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+4,"shard_cids[0].node_index changed, original HMAC kept",shard_cids[0].node_index,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+4,hmac removed,hmac,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+4,drand.target_round changed and re-signed,drand.target_round,True,8,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+4,drand.chain_hash changed and re-signed,drand.chain_hash,True,8,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+4,nonce changed and re-signed,nonce,True,8,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+4,drand.publish_time changed and re-signed,drand.publish_time,True,8,True,Accepted (original paper),Accepted (original paper),completed,True
+4,k changed and re-signed,k,True,7,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+4,n changed and re-signed,n,True,8,True,Rejected: manifest shape,Rejected: manifest shape,center 0,True
+4,payload_cid changed and re-signed,payload_cid,True,8,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+4,"full substitution, re-signed",all object references,True,8,True,Forged paper produced,Forged paper produced,completed,True
+5,control (unmodified),n/a,False,8,True,Accepted (original paper),Accepted (original paper),completed,True
+5,"drand.target_round changed, original HMAC kept",drand.target_round,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+5,"drand.publish_time changed, original HMAC kept",drand.publish_time,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+5,"drand.chain_hash changed, original HMAC kept",drand.chain_hash,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+5,"payload_cid changed, original HMAC kept",payload_cid,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+5,"puzzle_cid changed, original HMAC kept",puzzle_cid,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+5,"nonce changed, original HMAC kept",nonce,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+5,"n changed, original HMAC kept",n,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+5,"k changed, original HMAC kept",k,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+5,"exam_id changed, original HMAC kept",exam_id,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+5,"version changed, original HMAC kept",version,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+5,"locked_at changed, original HMAC kept",locked_at,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+5,"centers[0].id changed, original HMAC kept",centers[0].id,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+5,"centers[0].pubkey changed, original HMAC kept",centers[0].pubkey,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+5,"shard_cids[0].cid changed, original HMAC kept",shard_cids[0].cid,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+5,"shard_cids[0].node_index changed, original HMAC kept",shard_cids[0].node_index,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+5,hmac removed,hmac,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+5,drand.target_round changed and re-signed,drand.target_round,True,8,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+5,drand.chain_hash changed and re-signed,drand.chain_hash,True,8,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+5,nonce changed and re-signed,nonce,True,8,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+5,drand.publish_time changed and re-signed,drand.publish_time,True,8,True,Accepted (original paper),Accepted (original paper),completed,True
+5,k changed and re-signed,k,True,7,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+5,n changed and re-signed,n,True,8,True,Rejected: manifest shape,Rejected: manifest shape,center 0,True
+5,payload_cid changed and re-signed,payload_cid,True,8,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+5,"full substitution, re-signed",all object references,True,8,True,Forged paper produced,Forged paper produced,completed,True
+6,control (unmodified),n/a,False,8,True,Accepted (original paper),Accepted (original paper),completed,True
+6,"drand.target_round changed, original HMAC kept",drand.target_round,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+6,"drand.publish_time changed, original HMAC kept",drand.publish_time,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+6,"drand.chain_hash changed, original HMAC kept",drand.chain_hash,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+6,"payload_cid changed, original HMAC kept",payload_cid,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+6,"puzzle_cid changed, original HMAC kept",puzzle_cid,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+6,"nonce changed, original HMAC kept",nonce,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+6,"n changed, original HMAC kept",n,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+6,"k changed, original HMAC kept",k,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+6,"exam_id changed, original HMAC kept",exam_id,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+6,"version changed, original HMAC kept",version,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+6,"locked_at changed, original HMAC kept",locked_at,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+6,"centers[0].id changed, original HMAC kept",centers[0].id,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+6,"centers[0].pubkey changed, original HMAC kept",centers[0].pubkey,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+6,"shard_cids[0].cid changed, original HMAC kept",shard_cids[0].cid,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+6,"shard_cids[0].node_index changed, original HMAC kept",shard_cids[0].node_index,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+6,hmac removed,hmac,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+6,drand.target_round changed and re-signed,drand.target_round,True,8,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+6,drand.chain_hash changed and re-signed,drand.chain_hash,True,8,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+6,nonce changed and re-signed,nonce,True,8,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+6,drand.publish_time changed and re-signed,drand.publish_time,True,8,True,Accepted (original paper),Accepted (original paper),completed,True
+6,k changed and re-signed,k,True,7,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+6,n changed and re-signed,n,True,8,True,Rejected: manifest shape,Rejected: manifest shape,center 0,True
+6,payload_cid changed and re-signed,payload_cid,True,8,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+6,"full substitution, re-signed",all object references,True,8,True,Forged paper produced,Forged paper produced,completed,True
+7,control (unmodified),n/a,False,8,True,Accepted (original paper),Accepted (original paper),completed,True
+7,"drand.target_round changed, original HMAC kept",drand.target_round,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+7,"drand.publish_time changed, original HMAC kept",drand.publish_time,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+7,"drand.chain_hash changed, original HMAC kept",drand.chain_hash,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+7,"payload_cid changed, original HMAC kept",payload_cid,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+7,"puzzle_cid changed, original HMAC kept",puzzle_cid,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+7,"nonce changed, original HMAC kept",nonce,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+7,"n changed, original HMAC kept",n,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+7,"k changed, original HMAC kept",k,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+7,"exam_id changed, original HMAC kept",exam_id,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+7,"version changed, original HMAC kept",version,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+7,"locked_at changed, original HMAC kept",locked_at,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+7,"centers[0].id changed, original HMAC kept",centers[0].id,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+7,"centers[0].pubkey changed, original HMAC kept",centers[0].pubkey,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+7,"shard_cids[0].cid changed, original HMAC kept",shard_cids[0].cid,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+7,"shard_cids[0].node_index changed, original HMAC kept",shard_cids[0].node_index,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+7,hmac removed,hmac,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+7,drand.target_round changed and re-signed,drand.target_round,True,8,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+7,drand.chain_hash changed and re-signed,drand.chain_hash,True,8,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+7,nonce changed and re-signed,nonce,True,8,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+7,drand.publish_time changed and re-signed,drand.publish_time,True,8,True,Accepted (original paper),Accepted (original paper),completed,True
+7,k changed and re-signed,k,True,7,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+7,n changed and re-signed,n,True,8,True,Rejected: manifest shape,Rejected: manifest shape,center 0,True
+7,payload_cid changed and re-signed,payload_cid,True,8,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+7,"full substitution, re-signed",all object references,True,8,True,Forged paper produced,Forged paper produced,completed,True
+8,control (unmodified),n/a,False,8,True,Accepted (original paper),Accepted (original paper),completed,True
+8,"drand.target_round changed, original HMAC kept",drand.target_round,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+8,"drand.publish_time changed, original HMAC kept",drand.publish_time,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+8,"drand.chain_hash changed, original HMAC kept",drand.chain_hash,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+8,"payload_cid changed, original HMAC kept",payload_cid,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+8,"puzzle_cid changed, original HMAC kept",puzzle_cid,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+8,"nonce changed, original HMAC kept",nonce,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+8,"n changed, original HMAC kept",n,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+8,"k changed, original HMAC kept",k,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+8,"exam_id changed, original HMAC kept",exam_id,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+8,"version changed, original HMAC kept",version,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+8,"locked_at changed, original HMAC kept",locked_at,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+8,"centers[0].id changed, original HMAC kept",centers[0].id,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+8,"centers[0].pubkey changed, original HMAC kept",centers[0].pubkey,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+8,"shard_cids[0].cid changed, original HMAC kept",shard_cids[0].cid,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+8,"shard_cids[0].node_index changed, original HMAC kept",shard_cids[0].node_index,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+8,hmac removed,hmac,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+8,drand.target_round changed and re-signed,drand.target_round,True,8,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+8,drand.chain_hash changed and re-signed,drand.chain_hash,True,8,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+8,nonce changed and re-signed,nonce,True,8,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+8,drand.publish_time changed and re-signed,drand.publish_time,True,8,True,Accepted (original paper),Accepted (original paper),completed,True
+8,k changed and re-signed,k,True,7,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+8,n changed and re-signed,n,True,8,True,Rejected: manifest shape,Rejected: manifest shape,center 0,True
+8,payload_cid changed and re-signed,payload_cid,True,8,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+8,"full substitution, re-signed",all object references,True,8,True,Forged paper produced,Forged paper produced,completed,True
+9,control (unmodified),n/a,False,8,True,Accepted (original paper),Accepted (original paper),completed,True
+9,"drand.target_round changed, original HMAC kept",drand.target_round,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+9,"drand.publish_time changed, original HMAC kept",drand.publish_time,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+9,"drand.chain_hash changed, original HMAC kept",drand.chain_hash,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+9,"payload_cid changed, original HMAC kept",payload_cid,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+9,"puzzle_cid changed, original HMAC kept",puzzle_cid,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+9,"nonce changed, original HMAC kept",nonce,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+9,"n changed, original HMAC kept",n,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+9,"k changed, original HMAC kept",k,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+9,"exam_id changed, original HMAC kept",exam_id,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+9,"version changed, original HMAC kept",version,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+9,"locked_at changed, original HMAC kept",locked_at,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+9,"centers[0].id changed, original HMAC kept",centers[0].id,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+9,"centers[0].pubkey changed, original HMAC kept",centers[0].pubkey,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+9,"shard_cids[0].cid changed, original HMAC kept",shard_cids[0].cid,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+9,"shard_cids[0].node_index changed, original HMAC kept",shard_cids[0].node_index,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+9,hmac removed,hmac,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+9,drand.target_round changed and re-signed,drand.target_round,True,8,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+9,drand.chain_hash changed and re-signed,drand.chain_hash,True,8,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+9,nonce changed and re-signed,nonce,True,8,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+9,drand.publish_time changed and re-signed,drand.publish_time,True,8,True,Accepted (original paper),Accepted (original paper),completed,True
+9,k changed and re-signed,k,True,7,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+9,n changed and re-signed,n,True,8,True,Rejected: manifest shape,Rejected: manifest shape,center 0,True
+9,payload_cid changed and re-signed,payload_cid,True,8,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+9,"full substitution, re-signed",all object references,True,8,True,Forged paper produced,Forged paper produced,completed,True
+10,control (unmodified),n/a,False,8,True,Accepted (original paper),Accepted (original paper),completed,True
+10,"drand.target_round changed, original HMAC kept",drand.target_round,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+10,"drand.publish_time changed, original HMAC kept",drand.publish_time,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+10,"drand.chain_hash changed, original HMAC kept",drand.chain_hash,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+10,"payload_cid changed, original HMAC kept",payload_cid,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+10,"puzzle_cid changed, original HMAC kept",puzzle_cid,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+10,"nonce changed, original HMAC kept",nonce,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+10,"n changed, original HMAC kept",n,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+10,"k changed, original HMAC kept",k,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+10,"exam_id changed, original HMAC kept",exam_id,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+10,"version changed, original HMAC kept",version,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+10,"locked_at changed, original HMAC kept",locked_at,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+10,"centers[0].id changed, original HMAC kept",centers[0].id,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+10,"centers[0].pubkey changed, original HMAC kept",centers[0].pubkey,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+10,"shard_cids[0].cid changed, original HMAC kept",shard_cids[0].cid,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+10,"shard_cids[0].node_index changed, original HMAC kept",shard_cids[0].node_index,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+10,hmac removed,hmac,False,8,False,Rejected: HMAC,Rejected: HMAC,center 0,True
+10,drand.target_round changed and re-signed,drand.target_round,True,8,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+10,drand.chain_hash changed and re-signed,drand.chain_hash,True,8,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+10,nonce changed and re-signed,nonce,True,8,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+10,drand.publish_time changed and re-signed,drand.publish_time,True,8,True,Accepted (original paper),Accepted (original paper),completed,True
+10,k changed and re-signed,k,True,7,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+10,n changed and re-signed,n,True,8,True,Rejected: manifest shape,Rejected: manifest shape,center 0,True
+10,payload_cid changed and re-signed,payload_cid,True,8,True,Rejected: outer AES-GCM tag,Rejected: outer AES-GCM tag,coordinator,True
+10,"full substitution, re-signed",all object references,True,8,True,Forged paper produced,Forged paper produced,completed,True
