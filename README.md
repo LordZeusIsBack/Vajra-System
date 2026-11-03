@@ -397,9 +397,7 @@ unlocking real PDFs end-to-end.
    remove it; this is future work.
 
 For the full gap analysis, including suggested production
-parameters, see [DEPLOYMENT.md](docs/DEPLOYMENT.md). For the status of the
-paper's outstanding-evidence items, see
-[EVIDENCE_REVISION.md](docs/EVIDENCE_REVISION.md).
+parameters, see [DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## Contributing
 
