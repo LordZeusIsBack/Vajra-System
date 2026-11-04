@@ -8,7 +8,7 @@ _Makes pre-exam paper leaks mathematically impossible — not as policy, but as 
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Status: Prototype](https://img.shields.io/badge/status-prototype-orange)](#status-and-honest-limitations)
-[![Tests: 85 passing](https://img.shields.io/badge/tests-85_passing-brightgreen)](#testing)
+[![Tests: 91 Python + 15 Rust passing](https://img.shields.io/badge/tests-91_Python_%2B_15_Rust-brightgreen)](#testing)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org)
 [![Rust](https://img.shields.io/badge/rust-1.75+-orange.svg)](https://www.rust-lang.org)
 
@@ -74,7 +74,8 @@ If you are a **cryptographer or security engineer**, the meat is in
 [`python/centers.py`](python/centers.py) (per-centre hybrid encryption),
 [`python/drand_client.py`](python/drand_client.py) (time anchor), and
 [`rust/src/puzzle.rs`](rust/src/puzzle.rs) (RSW time-lock). Test suite
-is [`python/tests/`](python/tests/) — 85 passing tests covering both
+is [`python/tests/`](python/tests/) (91 tests) together with the Rust
+unit and CLI tests in [`rust/`](rust/) (15 tests), covering both
 positive and adversarial paths. Audit findings are
 [welcomed via GitHub issues](https://github.com/LordZeusIsBack/Vajra-System/issues).
 
@@ -256,6 +257,7 @@ vajra/
 │   ├── env.example             # copy to .env and fill in
 │   ├── main.py                 # FastAPI Source Vault server
 │   ├── lock_pipeline.py        # end-to-end lock orchestration
+│   ├── lock_publish.py         # IPFS upload + manifest signing (service and experiments)
 │   ├── reconstruct.py          # single-machine reconstruction (helper)
 │   ├── vajra_center.py         # per-centre CLI (decrypt-share)
 │   ├── vajra_coordinator.py    # coordinator CLI (combine)
@@ -266,18 +268,22 @@ vajra/
 │   ├── manifest.py             # HMAC-signed manifest format
 │   ├── ipfs_client.py          # Kubo HTTP RPC wrapper
 │   ├── config.py               # pydantic-settings loader
-│   └── tests/                  # 85 tests
+│   ├── experiments/            # exp01–exp09, kubo_cluster.py, common.py
+│   └── tests/
 │       ├── test_centers.py     #   per-centre encryption
 │       ├── test_drand.py       #   round arithmetic + multi-relay
 │       ├── test_roundtrip.py   #   manifest + Shamir + outer AES-GCM
-│       └── test_split_flow.py  #   end-to-end decentralized flow
+│       ├── test_split_flow.py  #   end-to-end decentralized flow
+│       └── test_publish_and_timings.py  # upload path and stage timers
 │
 └── rust/                       # the RSW time-lock puzzle
     ├── Cargo.toml
-    └── src/
-        ├── main.rs             # CLI (generate, lock, solve, bench)
-        ├── puzzle.rs           # RSW puzzle: Miller-Rabin, gen, solve
-        └── crypto.rs           # AES-256-GCM with AAD
+    ├── src/
+    │   ├── main.rs             # CLI (generate, lock, solve, bench)
+    │   ├── puzzle.rs           # RSW puzzle: Miller-Rabin, gen, solve (+ unit tests)
+    │   └── crypto.rs           # AES-256-GCM with AAD (+ unit tests)
+    └── tests/
+        └── cli.rs              # end-to-end tests of the vajra binary
 ```
 
 ## Testing
@@ -285,7 +291,8 @@ vajra/
 ```bash
 cd python
 uv run pytest tests/ -v
-# Expected: 85 passed
+# Expected: 91 passed (2 of them need the compiled binary: make rs-build;
+# without it they are skipped)
 ```
 
 The test suite covers:
@@ -311,12 +318,22 @@ The test suite covers:
   files load/save round-trip, coordinator rejects wrong manifest CID,
   duplicate indices, and centre-id-mismatch attacks.
 
-Rust integration tests:
+Rust tests (unit tests in `rust/src/puzzle.rs` and `rust/src/crypto.rs`,
+CLI tests in `rust/tests/cli.rs`):
 
 ```bash
 cd rust
 cargo test --release
 ```
+
+- **Unit tests** — the φ(N) trapdoor (`admin_compute_key`) equals the
+  sequential solver on small and random 128-bit moduli and on a `u128`
+  reference implementation; a wrong factorisation gives a wrong key;
+  Miller–Rabin on known primes and Carmichael numbers; AES-256-GCM round
+  trip, wrong key, AAD mismatch (changed, dropped, added), and tampered
+  ciphertext, tag, and nonce.
+- **CLI tests** — `generate → lock → solve` round trip; `solve` refuses a
+  wrong or missing AAD and a tampered `locked.json` without writing output.
 
 ## Status and honest limitations
 
@@ -371,6 +388,13 @@ unlocking real PDFs end-to-end.
    signed.** An attacker who replaces a centre's pubkey before lock-time
    would be able to decrypt that centre's shard. The registry should be
    signed by an offline admin key in production.
+
+9. **Release time.** `T_ops` covers the whole interval from locking to the
+   scheduled start, but the coordinator starts squaring only after the
+   drand gate opens, so the paper becomes available about one lock
+   duration after the start. Experiment 9 measures this delay. Starting
+   the squarings at lock time (they need only the public puzzle) would
+   remove it; this is future work.
 
 For the full gap analysis, including suggested production
 parameters, see [DEPLOYMENT.md](docs/DEPLOYMENT.md).

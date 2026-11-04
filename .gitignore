@@ -72,6 +72,9 @@ manifest.json
 payload.bin
 shard_*.json
 
+# Local Kubo cluster started by python/experiments/kubo_cluster.py
+.kubo-cluster/
+
 # Demo runs / sandboxes / scratch
 demo/
 demo_run/

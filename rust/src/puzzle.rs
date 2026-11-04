@@ -143,13 +143,25 @@ pub fn benchmark(n: &BigUint, duration_ms: u64) -> u64 {
 
 // ─── Puzzle Generation ───────────────────────────────────────────────────────
 
+/// Wall-clock seconds spent in each stage of [`generate`].
+#[derive(Clone, Copy, Debug, Default)]
+pub struct GenerateTimings {
+    /// Generating p and q (Miller–Rabin search).
+    pub primes: f64,
+    /// The 2-second squaring benchmark used for calibration.
+    pub calibration: f64,
+}
+
 /// Generate puzzle parameters for a target lock duration.
 ///
 /// Returns:
 ///  - `PuzzleParams`: share this publicly with all exam centers
 ///  - `AdminSecret`:  keep this secret; DELETE it after running `vajra lock`
-pub fn generate(time_seconds: u64) -> (PuzzleParams, AdminSecret) {
+///  - `GenerateTimings`: how long prime generation and calibration took
+pub fn generate(time_seconds: u64) -> (PuzzleParams, AdminSecret, GenerateTimings) {
     let mut rng = rand::thread_rng();
+    let mut timings = GenerateTimings::default();
+    let t0 = Instant::now();
 
     // 512 bits each → 1024-bit N. Production should use ≥1024-bit primes
     // (2048-bit N). 1024-bit factoring is within reach of nation-state
@@ -161,6 +173,7 @@ pub fn generate(time_seconds: u64) -> (PuzzleParams, AdminSecret) {
     let q = gen_prime(512, &mut rng);
 
     let n = &p * &q;
+    timings.primes = t0.elapsed().as_secs_f64();
 
     // Pick g as a quadratic residue: g = h² mod N for random h ∈ [2, N-2].
     // QRs sit in a subgroup of order λ(N)/2, ruling out elements whose order
@@ -172,7 +185,9 @@ pub fn generate(time_seconds: u64) -> (PuzzleParams, AdminSecret) {
     let g = (&h * &h) % &n;
 
     println!("[3/3] Benchmarking squarings/sec on this machine (2s sample) ...");
+    let t0 = Instant::now();
     let sps = benchmark(&n, 2_000);
+    timings.calibration = t0.elapsed().as_secs_f64();
     println!("      ↳ {sps} squarings/sec");
 
     // T_ops = how many squarings the center must perform to solve the puzzle.
@@ -197,7 +212,7 @@ pub fn generate(time_seconds: u64) -> (PuzzleParams, AdminSecret) {
         q: to_hex(&q),
     };
 
-    (params, secret)
+    (params, secret, timings)
 }
 
 // ─── Admin Key Derivation (Fast Path) ────────────────────────────────────────
@@ -270,4 +285,123 @@ pub fn solve(params: &PuzzleParams) -> BigUint {
     eprintln!("\r  100.0% | Done in {total_secs:.2}s                        ");
 
     x
+}
+
+// ─── Tests ───────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Small fixed puzzle: N = 10007 · 10009, g = 5² mod N.
+    fn small_params(t_ops: u64) -> (PuzzleParams, AdminSecret) {
+        let p = BigUint::from(10_007u32);
+        let q = BigUint::from(10_009u32);
+        let n = &p * &q;
+        let g = BigUint::from(25u32);
+        (
+            PuzzleParams {
+                n: to_hex(&n),
+                g: to_hex(&g),
+                t_ops,
+                ref_squarings_per_sec: 1,
+            },
+            AdminSecret {
+                p: to_hex(&p),
+                q: to_hex(&q),
+            },
+        )
+    }
+
+    /// Reference implementation with machine integers (N < 2^32, so x² < 2^64).
+    fn naive_squarings(g: u64, n: u64, t: u64) -> u64 {
+        let mut x = g % n;
+        for _ in 0..t {
+            x = ((x as u128 * x as u128) % n as u128) as u64;
+        }
+        x
+    }
+
+    #[test]
+    fn trapdoor_matches_sequential_squaring_on_small_modulus() {
+        for t in [0u64, 1, 2, 3, 17, 255, 1_000, 65_537] {
+            let (params, secret) = small_params(t);
+            let fast = admin_compute_key(&params, &secret);
+            let slow = solve(&params);
+            assert_eq!(fast, slow, "trapdoor and solver disagree for t_ops={t}");
+            let expected = naive_squarings(25, 10_007 * 10_009, t);
+            assert_eq!(
+                slow,
+                BigUint::from(expected),
+                "solver disagrees with u128 reference for t_ops={t}"
+            );
+        }
+    }
+
+    #[test]
+    fn trapdoor_matches_solver_on_random_128_bit_modulus() {
+        let mut rng = rand::thread_rng();
+        for _ in 0..3 {
+            let p = gen_prime(64, &mut rng);
+            let q = gen_prime(64, &mut rng);
+            let n = &p * &q;
+            let h = rng.gen_biguint_range(&BigUint::from(2u32), &(&n - BigUint::from(2u32)));
+            let g = (&h * &h) % &n;
+            let params = PuzzleParams {
+                n: to_hex(&n),
+                g: to_hex(&g),
+                t_ops: 20_000,
+                ref_squarings_per_sec: 1,
+            };
+            let secret = AdminSecret {
+                p: to_hex(&p),
+                q: to_hex(&q),
+            };
+            assert_eq!(admin_compute_key(&params, &secret), solve(&params));
+        }
+    }
+
+    #[test]
+    fn wrong_factorisation_gives_wrong_key() {
+        let (params, _) = small_params(1_000);
+        let bogus = AdminSecret {
+            p: to_hex(&BigUint::from(10_037u32)),
+            q: to_hex(&BigUint::from(10_039u32)),
+        };
+        assert_ne!(admin_compute_key(&params, &bogus), solve(&params));
+    }
+
+    #[test]
+    fn gen_prime_has_requested_size_and_is_prime() {
+        let mut rng = rand::thread_rng();
+        for bits in [16u64, 64, 128] {
+            let p = gen_prime(bits, &mut rng);
+            assert_eq!(p.bits(), bits);
+            assert!(is_probable_prime(&p, 25, &mut rng));
+        }
+    }
+
+    #[test]
+    fn miller_rabin_classifies_known_values() {
+        let mut rng = rand::thread_rng();
+        for prime in [2u64, 3, 5, 7, 10_007, 1_000_000_007, 2_147_483_647] {
+            assert!(
+                is_probable_prime(&BigUint::from(prime), 25, &mut rng),
+                "{prime} is prime"
+            );
+        }
+        // 561 and 41041 are Carmichael numbers (Fermat liars for every base).
+        for composite in [0u64, 1, 4, 9, 561, 41_041, 10_007 * 10_009] {
+            assert!(
+                !is_probable_prime(&BigUint::from(composite), 25, &mut rng),
+                "{composite} is composite"
+            );
+        }
+    }
+
+    #[test]
+    fn benchmark_reports_positive_rate() {
+        let n = BigUint::from(10_007u64 * 10_009);
+        assert!(benchmark(&n, 50) > 0);
+    }
 }

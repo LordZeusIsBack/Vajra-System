@@ -6,7 +6,8 @@ What this exercises:
   • Manifest build_and_sign → verify (and tamper detection)
 
 What this deliberately skips:
-  • The RSW puzzle itself (that's tested by `cargo test` on the Rust side)
+  • The RSW puzzle itself (covered by `cargo test` on the Rust side:
+    rust/src/puzzle.rs, rust/src/crypto.rs unit tests and rust/tests/cli.rs)
   • IPFS upload/fetch (mock or run a local Kubo daemon for that)
   • The full FastAPI lock endpoint (needs a test client + Rust binary)
 

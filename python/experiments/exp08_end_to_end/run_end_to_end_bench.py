@@ -1,3 +1,4 @@
+import argparse
 import asyncio
 import csv
 import json
@@ -12,17 +13,19 @@ import sys
 import tempfile
 import time
 
-os.environ.setdefault("MANIFEST_HMAC_SECRET", secrets.token_hex(32))
-
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 PYTHON_DIR = SCRIPT_DIR.parents[1]
 REPO_ROOT = PYTHON_DIR.parent
-sys.path.insert(0, str(PYTHON_DIR))
+sys.path.insert(0, str(SCRIPT_DIR.parent))
+
+import common
 
 from centers import EncryptedShard, bulk_generate, decrypt_share_with_privkey, encrypt_share_for_center
-from drand_client import derive_aad
+from drand_client import DrandError, derive_aad, verify_round_published
+from manifest import build_and_sign
+from manifest import verify as verify_manifest
 from shamir import reconstruct as shamir_reconstruct
 from shamir import split as shamir_split
 
@@ -42,10 +45,6 @@ TIMING_LINE_RE = re.compile(r"^VAJRA_TIMING (\w+) (.+)$")
 
 
 def find_vajra_binary() -> Path:
-    """Return the platform's release binary path under ``rust/target/release``.
-
-    Raise SystemExit with build instructions if the path does not exist.
-    """
     exe_name = "vajra.exe" if platform.system() == "Windows" else "vajra"
     candidate = REPO_ROOT / "rust" / "target" / "release" / exe_name
     if not candidate.exists():
@@ -57,17 +56,6 @@ def find_vajra_binary() -> Path:
 
 
 def run_vajra(binary: Path, args: list[str]) -> dict[str, float]:
-    """Run a Vajra subcommand with timing output enabled.
-
-    ``args`` contains the subcommand followed by its CLI arguments. Return
-    stderr timing values in seconds under ``<command>_<stage>_sec`` keys;
-    return an empty dict when no timing lines are present. Later values
-    replace earlier ones for the same key.
-
-    Raise RuntimeError on a nonzero exit, subprocess.TimeoutExpired after
-    300 seconds, or ValueError for a timing value that cannot be parsed as
-    a float. Process startup errors propagate as OSError.
-    """
     env = {**os.environ, "VAJRA_TIMING": "1"}
     result = subprocess.run(
         [str(binary), *args],
@@ -89,125 +77,45 @@ def run_vajra(binary: Path, args: list[str]) -> dict[str, float]:
 
 
 def make_pdf_bytes(size_mb: float) -> bytes:
-    """Return a deterministic PDF-like header and zero padding for a size in MiB.
-
-    The byte count is truncated to an integer, with a minimum of the
-    8-byte header even for zero or negative sizes. NaN raises ValueError;
-    infinity raises OverflowError.
-    """
     size_bytes = int(size_mb * 1024 * 1024)
     header = b"%PDF-1.4\n"
     return header + (b"\x00" * (size_bytes - len(header)))
 
 
-class SimulatedIPFS:
-    is_real = False
-
-    def __init__(self) -> None:
-        """Initialize an empty in-memory store with its own synthetic CID counter."""
-        self._store: dict[str, bytes] = {}
-        self._n = 0
-
-    async def add_bytes(self, data: bytes) -> str:
-        """Store bytes under a new synthetic CID and return it, even for duplicate data."""
-        self._n += 1
-        cid = f"sim-{self._n}"
-        self._store[cid] = data
-        return cid
-
-    async def add_json(self, obj: dict) -> str:
-        """Store compact UTF-8 JSON and return its synthetic CID.
-
-        JSON serialization errors (TypeError or ValueError) propagate.
-        """
-        return await self.add_bytes(json.dumps(obj, separators=(",", ":")).encode())
-
-    async def cat(self, cid: str) -> bytes:
-        """Return stored bytes for a synthetic CID; raise KeyError if it is unknown."""
-        return self._store[cid]
-
-    async def cat_json(self, cid: str) -> dict:
-        """Decode the JSON value stored at a synthetic CID.
-
-        Raise KeyError for an unknown CID. JSONDecodeError and UnicodeDecodeError
-        propagate for invalid JSON or invalid text encoding, respectively.
-        """
-        return json.loads(await self.cat(cid))
-
-
-class RealIPFS:
-    is_real = True
-
-    def __init__(self, client) -> None:
-        """Adapt an IPFSClient to use its first configured node for every operation."""
-        self._client = client
-
-    async def add_bytes(self, data: bytes) -> str:
-        """Upload and pin bytes on the first configured node, returning the CID.
-
-        IPFSError for unsuccessful Kubo responses and HTTP transport errors propagate.
-        """
-        return await self._client.add_bytes(data, node_index=0)
-
-    async def add_json(self, obj: dict) -> str:
-        """Upload and pin compact, sorted JSON on the first node, returning the CID.
-
-        JSON serialization, IPFSError, and HTTP transport errors propagate.
-        """
-        return await self._client.add_json(obj, node_index=0)
-
-    async def cat(self, cid: str) -> bytes:
-        """Fetch bytes by CID from the first configured node.
-
-        IPFSError for unsuccessful Kubo responses and HTTP transport errors propagate.
-        """
-        return await self._client.cat(cid, node_index=0)
-
-    async def cat_json(self, cid: str) -> dict:
-        """Fetch and decode a JSON value by CID from the first configured node.
-
-        The client raises IPFSError for unsuccessful Kubo responses or invalid
-        JSON. HTTP transport errors and UnicodeDecodeError also propagate.
-        """
-        return await self._client.cat_json(cid, node_index=0)
-
-
-async def get_ipfs_backend():
-    """Return a live backend if the first configured Kubo node answers the probe.
-
-    Return a fresh SimulatedIPFS when FORCE_FAKE_IPFS is set or any Exception
-    occurs while importing, initializing, or probing the client. The version
-    probe has a two-second timeout; no other nodes are tried.
-    """
-    if FORCE_FAKE_IPFS:
-        print("[ipfs] FORCE_FAKE_IPFS=True -> using simulated in-memory IPFS")
-        return SimulatedIPFS()
+async def get_ipfs_backend(args):
+    if FORCE_FAKE_IPFS or args.ipfs == "sim":
+        return common.SimulatedIPFS(node_count=args.nodes or 3)
+    urls = common.resolve_ipfs_urls(args) if args.ipfs_urls or args.ipfs == "real" else []
+    if not urls:
+        from config import settings
+        urls = settings.ipfs_node_list
+    count = args.nodes or len(urls)
+    backend = common.RealIPFS(urls, node_count=count)
     try:
-        from ipfs_client import IPFSClient
-        client = IPFSClient()
-        version = await asyncio.wait_for(client.version(node_index=0), timeout=2.0)
-        print(f"[ipfs] live Kubo daemon detected (v{version}) at {client.node_for(0)} -> using it")
-        return RealIPFS(client)
+        await asyncio.wait_for(backend.probe(), timeout=5.0)
     except Exception as exc:
-        print(f"[ipfs] no live Kubo daemon reachable ({exc.__class__.__name__}) -> using simulated in-memory IPFS")
-        return SimulatedIPFS()
+        if args.ipfs == "real":
+            raise SystemExit(f"Kubo nodes not reachable: {exc}")
+        print(f"[ipfs] no live Kubo cluster reachable ({exc.__class__.__name__}) -> simulated")
+        return common.SimulatedIPFS(node_count=args.nodes or 3)
+    print(f"[ipfs] live Kubo nodes: {backend.versions}")
+    return backend
 
 
-async def run_one(binary: Path, ipfs, pdf_bytes: bytes) -> tuple[dict, bool]:
-    """Run one lock, upload, fetch, and reconstruction cycle using the configured N/K.
+async def drand_gate(mode: str) -> tuple[float | str, str]:
+    if mode != "live":
+        return "", "off"
+    round_num = common.latest_round() - 2
+    t0 = time.perf_counter()
+    try:
+        await verify_round_published(round_num)
+        result = "ok"
+    except DrandError as exc:
+        result = "refused: " + " | ".join(str(exc).split("\n"))[:200]
+    return time.perf_counter() - t0, result
 
-    Return ``(metrics, correct)`` with stage durations in seconds and whether
-    the recovered bytes equal ``pdf_bytes``. Lock and solve wall times include
-    input writes and output reads; internal CLI timings are included only
-    when emitted by the binary. ``total_ipfs_bytes`` estimates uploaded bytes
-    using default JSON serialization for shards, so it can differ from the
-    backend's actual serialized size.
 
-    Uploaded objects remain in ``ipfs``. Temporary files are removed on a
-    best-effort basis, including on failure; cleanup errors are ignored.
-    Subprocess, file I/O, backend, and cryptographic errors propagate;
-    ``correct=False`` only reports a completed reconstruction with different bytes.
-    """
+async def run_one(binary: Path, ipfs, pdf_bytes: bytes, drand_mode: str = "off") -> tuple[dict, bool]:
     timings: dict[str, float] = {}
     tmpdir = tempfile.mkdtemp(prefix="vajra_e2e_")
     try:
@@ -260,9 +168,21 @@ async def run_one(binary: Path, ipfs, pdf_bytes: bytes) -> tuple[dict, bool]:
         puzzle_bytes = puzzle_path.read_bytes()
 
         t0 = time.perf_counter()
-        puzzle_cid = await ipfs.add_bytes(puzzle_bytes)
-        payload_cid = await ipfs.add_bytes(payload_bytes)
-        shard_cids = [await ipfs.add_json(s) for s in encrypted_shards]
+        puzzle_cid = await ipfs.add_bytes(puzzle_bytes, "puzzle.json", node_index=0)
+        payload_cid = await ipfs.add_bytes(payload_bytes, "payload.bin", node_index=0)
+        shard_entries = []
+        for i, s in enumerate(encrypted_shards):
+            node = i % ipfs.node_count
+            cid = await ipfs.add_json({"center_id": registry[i].id, **s}, f"shard_{i:03d}.json", node_index=node)
+            shard_entries.append({"cid": cid, "node_index": node})
+        manifest = build_and_sign(
+            n=N, k=K, puzzle_cid=puzzle_cid, payload_cid=payload_cid, nonce_hex=nonce.hex(),
+            shard_cids=shard_entries,
+            centers=[{"index": i, "id": r.id, "pubkey": r.pubkey} for i, r in enumerate(registry)],
+            drand={"chain_hash": CHAIN_HASH, "target_round": TARGET_ROUND,
+                   "publish_time": 1595431050 + 30 * TARGET_ROUND},
+        )
+        manifest_cid = await ipfs.add_json(manifest, "manifest.json", node_index=0)
         timings["ipfs_upload_sec"] = time.perf_counter() - t0
         total_ipfs_bytes = (
             len(puzzle_bytes) + len(payload_bytes)
@@ -270,10 +190,21 @@ async def run_one(binary: Path, ipfs, pdf_bytes: bytes) -> tuple[dict, bool]:
         )
 
         t0 = time.perf_counter()
-        fetched_puzzle_bytes = await ipfs.cat(puzzle_cid)
-        fetched_payload_bytes = await ipfs.cat(payload_cid)
-        fetched_shards = [await ipfs.cat_json(cid) for cid in shard_cids[:K]]
+        fetched_manifest = await ipfs.cat_json(manifest_cid, node_index=0)
+        if not verify_manifest(fetched_manifest):
+            raise RuntimeError("fetched manifest failed HMAC verification")
+        fetched_puzzle_bytes = await ipfs.cat(fetched_manifest["puzzle_cid"], node_index=0)
+        fetched_payload_bytes = await ipfs.cat(fetched_manifest["payload_cid"], node_index=0)
+        fetched_shards = [
+            await ipfs.cat_json(e["cid"], node_index=e["node_index"])
+            for e in fetched_manifest["shard_cids"][:K]
+        ]
         timings["ipfs_fetch_sec"] = time.perf_counter() - t0
+
+        gate_sec, gate_result = await drand_gate(drand_mode)
+        if gate_sec != "":
+            timings["drand_gate_sec"] = gate_sec
+        timings["drand_gate_result"] = gate_result
 
         t0 = time.perf_counter()
         plaintext_shares = [
@@ -313,11 +244,12 @@ async def run_one(binary: Path, ipfs, pdf_bytes: bytes) -> tuple[dict, bool]:
         shutil.rmtree(tmpdir, ignore_errors=True)
         timings["cleanup_sec"] = time.perf_counter() - t0
 
-    return {**timings, "total_ipfs_bytes": total_ipfs_bytes}, correct
+    return {**timings, "total_ipfs_bytes": total_ipfs_bytes, "objects_uploaded": N + 3}, correct
 
 
 FIELDNAMES = [
     "pdf_size_mb", "run_id", "n", "k", "puzzle_time_target_sec", "ipfs_backend",
+    "ipfs_nodes", "objects_uploaded", "drand_backend", "drand_gate_sec", "drand_gate_result",
     "centre_keygen_sec", "puzzle_generation_sec",
     "lock_wall_sec", "lock_parse_sec", "lock_keyderiv_sec", "lock_encrypt_sec", "lock_write_sec",
     "outer_lock_sec", "shamir_split_sec", "centre_encryption_sec",
@@ -329,30 +261,35 @@ FIELDNAMES = [
 
 
 async def main() -> None:
-    """Benchmark the configured payload sizes and repetitions, then overwrite RESULTS_FILE.
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    common.add_ipfs_arguments(ap, default="auto", allow_auto=True)
+    ap.add_argument("--nodes", type=int, default=None,
+                    help="number of shard nodes (default: all given URLs; 3 for sim)")
+    ap.add_argument("--drand", choices=["off", "live"], default="off")
+    ap.add_argument("--sizes", default=",".join(str(x) for x in PDF_SIZES_MB))
+    ap.add_argument("--reps", type=int, default=REPETITIONS)
+    ap.add_argument("--out", type=Path, default=RESULTS_FILE)
+    args = ap.parse_args()
+    sizes = [float(x) if "." in x else int(x) for x in args.sizes.split(",")]
 
-    CSV timings are rounded to six decimal places in seconds; unavailable
-    CLI timings are left blank. Reconstruction mismatches are recorded and
-    counted without aborting. SystemExit for a missing binary and errors
-    from benchmark runs or CSV writing propagate.
-    """
     binary = find_vajra_binary()
-    ipfs = await get_ipfs_backend()
+    ipfs = await get_ipfs_backend(args)
+    backend = "real" if ipfs.is_real else "simulated"
 
     print(
         f"Starting Experiment 08: End-to-End Performance "
-        f"(sizes={PDF_SIZES_MB} MB, n={N}, k={K}, "
-        f"puzzle_time={PUZZLE_TIME_SECONDS}s, {REPETITIONS} reps each, "
-        f"ipfs={'real' if ipfs.is_real else 'simulated'})"
+        f"(sizes={sizes} MB, n={N}, k={K}, "
+        f"puzzle_time={PUZZLE_TIME_SECONDS}s, {args.reps} reps each, "
+        f"ipfs={backend} x{ipfs.node_count}, drand={args.drand})"
     )
 
     rows = []
-    for size_mb in PDF_SIZES_MB:
+    for size_mb in sizes:
         pdf_bytes = make_pdf_bytes(size_mb)
         print(f"\n-- PDF size {size_mb} MB --")
-        for run_id in range(1, REPETITIONS + 1):
+        for run_id in range(1, args.reps + 1):
             t_wall0 = time.perf_counter()
-            timings, correct = await run_one(binary, ipfs, pdf_bytes)
+            timings, correct = await run_one(binary, ipfs, pdf_bytes, args.drand)
             wall = time.perf_counter() - t_wall0
 
             row = {
@@ -361,9 +298,11 @@ async def main() -> None:
                 "n": N,
                 "k": K,
                 "puzzle_time_target_sec": PUZZLE_TIME_SECONDS,
-                "ipfs_backend": "real" if ipfs.is_real else "simulated",
-                **{key: round(val, 6) for key, val in timings.items() if key != "total_ipfs_bytes"},
-                "total_ipfs_bytes": timings["total_ipfs_bytes"],
+                "ipfs_backend": backend,
+                "ipfs_nodes": ipfs.node_count,
+                "drand_backend": args.drand,
+                **{key: (round(val, 6) if isinstance(val, float) else val)
+                   for key, val in timings.items()},
                 "wall_clock_total_sec": round(wall, 6),
                 "reconstruction_correct": correct,
             }
@@ -372,20 +311,21 @@ async def main() -> None:
             status = "OK" if correct else "MISMATCH"
             squaring = timings.get("solve_squaring_sec")
             squaring_str = f"{squaring:.3f}s" if squaring is not None else "n/a (unpatched binary)"
+            gate = f", drand gate {timings['drand_gate_result']}" if args.drand == "live" else ""
             print(
-                f"  run {run_id}/{REPETITIONS}: total={wall:.3f}s "
+                f"  run {run_id}/{args.reps}: total={wall:.3f}s "
                 f"(solve_wall={timings['solve_wall_sec']:.3f}s [whole CLI call, grows with size -- expected], "
                 f"solve_squaring={squaring_str} [pure RSW -- should stay flat], "
-                f"lock_wall={timings['lock_wall_sec']:.3f}s) [{status}]"
+                f"lock_wall={timings['lock_wall_sec']:.3f}s{gate}) [{status}]"
             )
 
-    with open(RESULTS_FILE, "w", newline="", encoding="utf-8") as fp:
+    with open(args.out, "w", newline="", encoding="utf-8") as fp:
         writer = csv.DictWriter(fp, fieldnames=FIELDNAMES, restval="")
         writer.writeheader()
         writer.writerows(rows)
 
     mismatches = sum(1 for r in rows if not r["reconstruction_correct"])
-    print(f"\nExperiment complete: {len(rows)} runs, {mismatches} mismatches. Raw data -> {RESULTS_FILE}")
+    print(f"\nExperiment complete: {len(rows)} runs, {mismatches} mismatches. Raw data -> {args.out}")
 
 
 if __name__ == "__main__":

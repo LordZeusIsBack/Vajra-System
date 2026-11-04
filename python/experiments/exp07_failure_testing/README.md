@@ -1,16 +1,19 @@
 # Experiment 07 — Failure Testing
 
 ## Research Question
+
 When pieces of VAJRA's own infrastructure fail or get tampered with (an IPFS
 node down, drand relays down, a wrong/duplicate/mislabeled share, a
-corrupted ciphertext), does reconstruction fail *safely* at the point it
+corrupted ciphertext), does reconstruction fail _safely_ at the point it
 should — a clean, attributable rejection, never a wrong PDF?
 
 ## Hypothesis
+
 Reconstruction succeeds whenever ≥k honest centres can reach the manifest
 and their own shard, and is cleanly rejected for every tampering case below.
 
 ## Independent Variables
+
 - Which IPFS node(s) are down (0–3, at two shard-distribution granularities: 3 nodes and 10 nodes)
 - Number of down drand relays (0–4 of 4)
 - Injected fault: wrong share value, duplicate share, mislabeled centre ID
@@ -18,15 +21,18 @@ and their own shard, and is cleanly rejected for every tampering case below.
   outer payload ciphertext
 
 ## Dependent Variables
+
 - Reconstruction result (Success / Fail)
 - Which real function raised the error, and its message
 
 ## Controlled Variables
+
 - n = 10, k = 8
 - Fresh centre keypairs, data_key, and manifest per repetition
 - Fixed drand target_round/chain_hash (round 1, already published)
 
 ## Procedure
+
 Every check calls the real production functions unmodified (`centers.py`,
 `shamir.py`, `manifest.py`, `reconstruct.py`, `vajra_coordinator.py`,
 `drand_client.py`). Only the two network boundaries are swapped for
@@ -41,10 +47,12 @@ solve`); otherwise those stop one step short, same fallback the test suite
 uses.
 
 ## Environment
+
 No IPFS node, drand relay, or server needed. Compiled `vajra` binary is
 optional — used automatically if present at `rust/target/release/`.
 
 ## Result
+
 65/65 outcomes matched expectation (both with and without the compiled
 binary present) — see `raw_results.csv`. Two things worth flagging: node 0
 (where the manifest/payload/puzzle are pinned, per `main.py`) is a hard

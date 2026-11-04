@@ -131,7 +131,13 @@ fn cmd_generate(time: u64, puzzle_out: PathBuf, secret_out: PathBuf) {
     println!("╚══════════════════════════════════════════╝\n");
     println!("Lock duration: {time}s\n");
 
-    let (params, secret) = puzzle::generate(time);
+    let (params, secret, gen_timings) = puzzle::generate(time);
+    if timing_enabled() {
+        eprintln!(
+            "VAJRA_TIMING generate primes={:.6} calibration={:.6}",
+            gen_timings.primes, gen_timings.calibration
+        );
+    }
 
     // Write public params
     let puzzle_json =

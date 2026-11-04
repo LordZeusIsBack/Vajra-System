@@ -55,6 +55,7 @@ import json
 import logging
 import sys
 import tempfile
+import time
 from pathlib import Path
 from typing import Sequence
 
@@ -288,6 +289,7 @@ async def combine_shares_to_pdf(
     vajra_binary: str | Path,
     *,
     skip_drand_check: bool = False,
+    stage_times: dict | None = None,
 ) -> bytes:
     """Combine ≥k plaintext Shamir shares → data_key → unwrap → solve → PDF.
 
@@ -304,6 +306,10 @@ async def combine_shares_to_pdf(
         vajra_binary:       Path to compiled `vajra` Rust binary.
         skip_drand_check:   If True, skip the Layer A network/clock policy
                             check. AAD is still cryptographically threaded.
+        stage_times:        Optional dict, filled with Unix timestamps
+                            (time.time()) when each stage finishes:
+                            ``gate_passed``, ``outer_unwrapped``,
+                            ``solve_started``, ``pdf_ready``.
 
     Returns:
         Decrypted PDF bytes.
@@ -311,6 +317,7 @@ async def combine_shares_to_pdf(
     Raises:
         ReconstructError: Any failure (drand gate, Shamir, AES-GCM, vajra solve).
     """
+    marks: dict = stage_times if stage_times is not None else {}
     k_val        = int(manifest["k"])
     chain_hash   = str(manifest["drand"]["chain_hash"])
     target_round = int(manifest["drand"]["target_round"])
@@ -338,6 +345,7 @@ async def combine_shares_to_pdf(
             "drand round %d verified published (randomness=%s…)",
             round_info.round, round_info.randomness[:16],
         )
+    marks["gate_passed"] = time.time()
 
     # ── Re-derive AAD ─────────────────────────────────────────────────────
     try:
@@ -391,6 +399,7 @@ async def combine_shares_to_pdf(
             "lock time."
         ) from exc
     log.info("Outer layer unwrapped (%d bytes → locked.json)", len(locked_bytes))
+    marks["outer_unwrapped"] = time.time()
 
     # ── Fetch puzzle.json ─────────────────────────────────────────────────
     puzzle_bytes = await _cat_any_node(manifest["puzzle_cid"], ipfs)
@@ -413,6 +422,7 @@ async def combine_shares_to_pdf(
             "--aad-hex",  aad.hex(),
         ]
         log.info("Running: %s", " ".join(args))
+        marks["solve_started"] = time.time()
 
         proc = await asyncio.create_subprocess_exec(
             *args,
@@ -441,6 +451,7 @@ async def combine_shares_to_pdf(
                 "and puzzle integrity."
             )
         log.info("PDF recovered (%d bytes)", len(pdf_bytes))
+        marks["pdf_ready"] = time.time()
         return pdf_bytes
 
 

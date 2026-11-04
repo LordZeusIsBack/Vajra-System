@@ -24,12 +24,10 @@ Start with:
 """
 
 import asyncio
-import json
 import logging
 from contextlib import asynccontextmanager
 from typing import Annotated
 
-import httpx
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile, status
 from pydantic import BaseModel
 
@@ -37,7 +35,7 @@ from centers import CentersError, load_registry
 from config import settings
 from ipfs_client import IPFSClient, IPFSError
 from lock_pipeline import PipelineError, run_vajra_pipeline
-from manifest import build_and_sign
+from lock_publish import PublishError, publish_locked_exam
 from manifest import verify as verify_manifest
 
 log = logging.getLogger("vajra")
@@ -304,86 +302,24 @@ async def lock_exam(
         drand_info["chain_hash"][:12],
     )
 
-    # ── Upload to IPFS ────────────────────────────────────────────────────────
+    # ── Upload to IPFS + sign manifest ────────────────────────────────────────
+    # puzzle.json, payload and manifest → node 0; shards round-robin.
+    # See lock_publish.py (shared with the experiments).
     try:
-        # puzzle.json → always on node 0 (primary, most reliable)
-        puzzle_cid = await _ipfs.add_bytes(
-            json.dumps(puzzle_params, separators=(",", ":")).encode(),
-            filename="puzzle.json",
-            node_index=0,
+        manifest_cid, manifest = await publish_locked_exam(
+            _ipfs,
+            n=n_val,
+            k=k_val,
+            puzzle_params=puzzle_params,
+            double_locked=double_locked,
+            encrypted_shards=encrypted_shards,
+            nonce_hex=nonce_hex,
+            drand_info=drand_info,
+            centers_meta=centers_meta,
+            exam_id=exam_id,
         )
-        log.info("puzzle.json → %s (node 0)", puzzle_cid)
-
-        # double-locked payload → node 0 as well (it's big, keep on primary)
-        payload_cid = await _ipfs.add_bytes(
-            double_locked,
-            filename="payload.bin",
-            node_index=0,
-        )
-        log.info("payload.bin → %s (node 0)  %d bytes", payload_cid, len(double_locked))
-
-        # Encrypted shards → round-robin across all configured nodes.
-        # Each shard's on-IPFS content is now the EncryptedShard dict from
-        # the pipeline; the plaintext Shamir share never left run_vajra_pipeline.
-        shard_cid_entries: list[dict] = []
-        for idx, enc_shard in enumerate(encrypted_shards):
-            node_idx = idx % _ipfs.node_count
-            shard_obj = {
-                "shard_index":    idx,
-                "center_id":      centers_meta[idx]["id"],
-                "center_pubkey":  centers_meta[idx]["pubkey"],
-                # Per-center encryption fields (X25519 ECDH + ChaCha20-Poly1305).
-                # Only the holder of the matching center privkey can decrypt.
-                "eph_pubkey_hex": enc_shard["eph_pubkey_hex"],
-                "nonce_hex":      enc_shard["nonce_hex"],
-                "ciphertext_hex": enc_shard["ciphertext_hex"],
-                # Convenience pointers so a center only needs the shard CID to
-                # know where to fetch the payload and puzzle. These ALSO appear
-                # in the signed manifest — these copies are not load-bearing.
-                "payload_cid":    payload_cid,
-                "outer_nonce_hex": nonce_hex,
-                "puzzle_cid":     puzzle_cid,
-            }
-            cid = await _ipfs.add_json(
-                shard_obj,
-                filename=f"shard_{idx:03d}.json",
-                node_index=node_idx,
-            )
-            shard_cid_entries.append({"cid": cid, "node_index": node_idx})
-            log.info(
-                "shard_%03d.json → %s  (node %d, center %s)",
-                idx, cid, node_idx, centers_meta[idx]["id"],
-            )
-
-    except (IPFSError, httpx.HTTPError) as exc:
-        log.error("IPFS upload failed: %s", exc)
-        raise HTTPException(
-            status.HTTP_502_BAD_GATEWAY,
-            f"IPFS upload failed: {exc}",
-        )
-
-    # ── Build + sign manifest ─────────────────────────────────────────────────
-    manifest = build_and_sign(
-        n=n_val,
-        k=k_val,
-        puzzle_cid=puzzle_cid,
-        payload_cid=payload_cid,
-        nonce_hex=nonce_hex,
-        shard_cids=shard_cid_entries,
-        centers=centers_meta,
-        drand={
-            "chain_hash":   drand_info["chain_hash"],
-            "target_round": drand_info["target_round"],
-            "publish_time": drand_info["publish_time"],
-        },
-        exam_id=exam_id,
-    )
-
-    try:
-        manifest_cid = await _ipfs.add_json(manifest, filename="manifest.json", node_index=0)
-        log.info("manifest.json → %s", manifest_cid)
-    except (IPFSError, httpx.HTTPError) as exc:
-        raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"Manifest upload failed: {exc}")
+    except PublishError as exc:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, str(exc))
 
     return LockResponse(manifest_cid=manifest_cid, manifest=manifest)
 

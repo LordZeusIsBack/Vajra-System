@@ -18,7 +18,8 @@ In rough order of impact:
    goal is that a non-cryptographer policymaker can read the docs and
    understand what's claimed and what isn't.
 
-3. **Test coverage.** The current suite is 85 tests. Edge cases at
+3. **Test coverage.** The current suite is 91 Python tests and 15 Rust tests (unit tests
+   in `rust/src/` and CLI tests in `rust/tests/cli.rs`). Edge cases at
    the boundary between Python and Rust, on Windows specifically, and
    under partial-network conditions are under-covered.
 
